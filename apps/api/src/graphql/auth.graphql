@@ -1,0 +1,42 @@
+# apps/api/src/graphql/auth.graphql
+# Basic response payload for auth mutations
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String # Optional, depending on strategy
+  user: User # Return user info on login/refresh
+}
+
+# Minimal User type definition commented out - primary definition is in user.graphql
+# type User {
+#   id: ID!
+#   phoneNumber: String
+#   firstName: String
+# }
+
+# Input for registration
+input RegisterInput {
+  phoneNumber: String!
+  password: String!
+  firstName: String
+  lastName: String
+  # Add other initial fields like gender, birthday if needed for registration step 0
+}
+
+# Input for login
+input LoginInput {
+  phoneNumber: String!
+  password: String!
+}
+
+# Extend the root Mutation type
+extend type Mutation {
+  # Registers a new user
+  register(input: RegisterInput!): AuthPayload!
+
+  # Logs in a user
+  login(input: LoginInput!): AuthPayload!
+
+  # Refreshes authentication tokens using a refresh token
+  refreshToken(token: String!): AuthPayload!
+
+}

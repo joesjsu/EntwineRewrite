@@ -1,0 +1,62 @@
+# Represents the configuration for the AI Relationship Coach
+type CoachConfig {
+  registrationQuestions: [String!]!
+  # Add other config fields as needed (e.g., prompts, analysis settings)
+}
+
+# Represents the state and response for a turn in the registration coaching chat
+type RegistrationCoachTurn {
+  response: String! # The coach's message to the user
+  newState: JSON! # Opaque state object to be passed back in the next turn
+}
+
+# Input for sending a message during registration coaching
+input SendRegistrationMessageInput {
+  message: String!
+  currentState: JSON! # State object received from the previous turn (or initial state)
+}
+
+# Enum to specify the context for chat feedback
+enum ChatFeedbackScope {
+  RECENT # Feedback on the last few messages
+  FULL   # Feedback on the entire conversation
+  DRAFT  # Feedback on a user's drafted reply
+}
+
+# Input for requesting chat feedback
+input RequestChatFeedbackInput {
+  chatId: ID!
+  scope: ChatFeedbackScope!
+  draftContent: String # Required if scope is DRAFT
+  recentMessageCount: Int = 10 # Used if scope is RECENT or DRAFT
+}
+
+# Represents the feedback/suggestions provided by the coach
+type ChatFeedback {
+  suggestions: [String!]!
+}
+
+# Extend the main Query type
+extend type Query {
+  """
+  Fetches the configuration for the AI Relationship Coach.
+  """
+  getCoachConfig: CoachConfig!
+
+}
+
+# Extend the main Mutation type
+extend type Mutation {
+  """
+  Sends a user's message during the registration coaching process and gets the coach's reply.
+  """
+  sendRegistrationCoachMessage(input: SendRegistrationMessageInput!): RegistrationCoachTurn!
+
+  """
+  Requests feedback or suggestions from the AI coach based on a chat context.
+  """
+  requestChatFeedback(input: RequestChatFeedbackInput!): ChatFeedback!
+}
+
+# Scalar type for representing arbitrary JSON data (for state objects)
+scalar JSON

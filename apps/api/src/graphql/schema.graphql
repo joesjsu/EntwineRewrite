@@ -1,0 +1,13 @@
+# Defines custom scalar types used throughout the schema
+scalar DateTime
+scalar Json # Assuming Json is also needed based on codegen config
+
+
+type Query {
+  hello: String # Keep the placeholder query for now
+}
+
+# Define a base Mutation type with a dummy field
+type Mutation {
+  _empty: Boolean # Dummy field to ensure type is not empty
+}

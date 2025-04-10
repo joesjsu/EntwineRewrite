@@ -1,0 +1,22 @@
+# Defines types and queries related to chat messages
+
+# Represents a single chat message
+type Message {
+  id: ID!
+  matchId: ID! # ID of the match this message belongs to
+  senderId: ID! # ID of the user who sent the message
+  # recipientId: ID! # Recipient ID might not be needed if fetched via match context
+  content: String!
+  createdAt: DateTime! # Assumes DateTime scalar is defined
+  readAt: DateTime # Nullable, timestamp when the message was read
+  # sender: User # Optional: Include sender details if needed
+}
+
+# Extend the root Query type
+extend type Query {
+  """
+  Fetches messages for a specific match, ordered by creation time.
+  Requires authentication.
+  """
+  getMessagesForMatch(matchId: ID!): [Message!]! @auth # Basic auth, refine if needed
+}

@@ -1,0 +1,41 @@
+# Represents the compatibility breakdown between two users
+type CompatibilityScore {
+  overall: Float! # Overall score (e.g., 0.0 to 1.0)
+  # Add breakdowns for different dimensions if needed later
+  # valuesAlignment: Float
+  # interestsOverlap: Float
+  # communicationStyle: Float
+  # physicalPreference: Float
+}
+
+# Represents a potential match for the current user
+type PotentialMatch {
+  userId: ID!
+  user: User! # Assuming a User type is defined elsewhere
+  compatibility: CompatibilityScore!
+  # Add other relevant info like distance if calculated
+  # distanceKm: Float
+}
+
+# Extend the main Query type
+extend type Query {
+  """
+  Fetches potential matches for the currently authenticated user.
+  """
+  getPotentialMatches(limit: Int = 20): [PotentialMatch!]!
+}
+
+# We might need Input types later for swipe actions, etc.
+# input SwipeInput {
+#   swipedUserId: ID!
+#   direction: SwipeDirection! # e.g., LEFT, RIGHT
+# }
+#
+# enum SwipeDirection {
+#   LEFT
+#   RIGHT
+# }
+#
+# extend type Mutation {
+#   swipe(input: SwipeInput!): Boolean # Or return the new Match object if created
+# }

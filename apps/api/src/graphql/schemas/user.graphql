@@ -1,0 +1,36 @@
+# apps/api/src/graphql/schemas/user.graphql
+
+
+# Defines user roles within the application
+enum UserRole {
+  USER
+  ADMIN
+}
+
+# Represents a user in the system
+type User {
+  id: ID!
+  firstName: String
+  lastName: String
+  email: String # Added email field
+  gender: String
+  birthday: String # Consider using a custom Scalar like DateTime
+  bio: String
+  # location: Json # Requires a Json scalar definition
+  profileComplete: Boolean!
+  registrationStep: Int! # Added registrationStep
+  createdAt: String! # Consider using a custom Scalar like DateTime
+  updatedAt: String! # Consider using a custom Scalar like DateTime
+  role: UserRole! # Added role field
+
+  # Add relations if needed, e.g., photos
+  # photos: [UserPhoto!]
+}
+
+# Define input types if needed for mutations later
+# input UserInput { ... }
+
+# Define queries/mutations related to User if needed
+extend type Query {
+  me: User # Temporarily removed @auth directive again
+}

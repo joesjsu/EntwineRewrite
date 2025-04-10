@@ -1,0 +1,7 @@
+# apps/api/src/graphql/directives.graphql
+
+"""
+Ensures the user is authenticated before resolving the field.
+Throws an AuthenticationError if the user is not found in the context.
+"""
+directive @auth(requires: UserRole = USER) on FIELD_DEFINITION | OBJECT

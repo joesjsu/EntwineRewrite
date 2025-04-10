@@ -1,6 +1,10 @@
 {
-  "extends": "@repo/typescript-config/nextjs.json",
+  "extends": "@entwine-rewrite/typescript-config/nextjs.json",
   "compilerOptions": {
+    "baseUrl": ".", // Define base directory for path resolution
+    "paths": {
+      "@/*": ["./*"] // Map @/* to the root directory (since no src/ dir)
+    },
     "plugins": [
       {
         "name": "next"

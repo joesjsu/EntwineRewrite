@@ -1,0 +1,19 @@
+# apps/web/graphql/queries/admin.gql
+
+# Query to fetch all AI feature configurations for the admin panel
+query GetAiFeatureConfigs {
+  getAiFeatureConfigs {
+    featureKey
+    providerName
+    modelName
+    updatedAt
+  }
+}
+
+# Query to fetch available AI providers and their models
+query GetAvailableAiProviders {
+  getAvailableAiProviders {
+    providerName
+    models
+  }
+}

@@ -1,0 +1,68 @@
+# Defines types, queries, and mutations related to administrative functions
+
+# Represents the configuration for a specific AI-powered feature
+type AiFeatureConfig {
+  # Unique identifier for the feature (e.g., 'matching_analysis', 'coaching_registration')
+  featureKey: String!
+  # The name of the AI provider (e.g., 'google', 'openai')
+  providerName: String!
+  # The specific model name used by the provider (e.g., 'gemini-pro', 'gpt-4')
+  modelName: String!
+  # Timestamp of the last update
+  updatedAt: DateTime!
+}
+
+# Represents an available AI provider and its models
+type AvailableAiProvider {
+  providerName: String!
+  models: [String!]!
+}
+
+
+# Represents a user view specifically for administrators
+type AdminUser {
+  id: ID!
+  firstName: String
+  lastName: String
+  # email: String # TODO: Add if needed from DB schema
+  # phone: String # TODO: Add if needed from DB schema
+  role: UserRole! # Assumes UserRole enum is globally available
+  profileComplete: Boolean!
+  createdAt: DateTime! # Assumes DateTime scalar is defined
+  updatedAt: DateTime! # Assumes DateTime scalar is defined
+}
+
+# Represents a paginated list of admin users
+type AdminUserList {
+  users: [AdminUser!]!
+  totalCount: Int!
+  # Add pageInfo for cursor-based pagination if needed later
+}
+
+# Input type for updating an AI feature configuration
+input UpdateAiFeatureConfigInput {
+  # The unique key of the feature to update
+  featureKey: String!
+  # The new provider name
+  providerName: String!
+  # The new model name
+  modelName: String!
+}
+
+extend type Query {
+  # Retrieves all current AI feature configurations. Requires admin privileges.
+  getAiFeatureConfigs: [AiFeatureConfig!]! @auth(requires: ADMIN)
+  # Retrieves the list of available AI providers and their models. Requires admin privileges.
+  getAvailableAiProviders: [AvailableAiProvider!]! @auth(requires: ADMIN)
+
+  # Retrieves a paginated list of users for administration. Requires admin privileges.
+  getAdminUsers(offset: Int = 0, limit: Int = 20): AdminUserList! @auth(requires: ADMIN)
+
+  # Retrieves a specific user by ID for administration. Requires admin privileges.
+  getAdminUser(userId: ID!): AdminUser @auth(requires: ADMIN)
+} # Moved closing brace here
+
+extend type Mutation {
+  # Updates the configuration for a specific AI feature. Requires admin privileges.
+  updateAiFeatureConfig(input: UpdateAiFeatureConfigInput!): AiFeatureConfig @auth(requires: ADMIN) # Placeholder for auth directive
+}

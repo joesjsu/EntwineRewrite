@@ -1,0 +1,98 @@
+'use client';
+
+import React, { useState, useContext } from 'react';
+// Remove direct useMutation import for login, context handles it
+import { LOGIN_MUTATION } from '@/graphql/auth.gql'; // Assuming alias setup
+import { useAuth } from '@/context/AuthContext'; // Use the custom hook
+import { Button } from '@/components/ui/button'; // Assuming Shadcn UI setup
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react"; // For alert icon
+
+export function LoginForm() {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const { login: loginUser } = useAuth(); // Use the custom hook
+  // State for loading and error, managed by the context call
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError(null); // Clear previous errors
+    try {
+      const success = await loginUser({ phoneNumber, password });
+      if (success) {
+        console.log('Login successful (handled by context)');
+        // Optionally redirect user here after successful context update
+      } else {
+        // Context's login function returned false, likely due to API error handled within context
+        // We might want a generic error if the context doesn't throw/expose specific errors
+         setError(new Error('Login failed. Please check your credentials.'));
+         console.log('Login failed (handled by context)');
+      }
+    } catch (err: any) {
+      // Catch errors potentially thrown by useAuth or unexpected issues
+      console.error('Login failed:', err);
+      setError(err instanceof Error ? err : new Error('An unexpected error occurred.'));
+    } finally {
+       setIsLoading(false);
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle>Login</CardTitle>
+        <CardDescription>Enter your phone number and password to access your account.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Input
+              id="phoneNumber"
+              type="tel" // Use tel type for phone numbers
+              placeholder="+1234567890"
+              value={phoneNumber}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumber(e.target.value)}
+              required
+              disabled={isLoading} // Keep only this one correct attribute
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              required
+              disabled={isLoading} // Use isLoading state variable
+            />
+          </div>
+          {error && (
+             <Alert variant="destructive">
+               <Terminal className="h-4 w-4" />
+               <AlertTitle>Login Error</AlertTitle>
+               <AlertDescription>
+                 {error.message || 'An unknown error occurred. Please try again.'}
+               </AlertDescription>
+             </Alert>
+          )}
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login'}
+          </Button>
+        </form>
+      </CardContent>
+      <CardFooter>
+        <p className="text-sm text-center w-full">
+          Don't have an account? <a href="/signup" className="underline">Sign up</a>
+        </p>
+      </CardFooter>
+    </Card>
+  );
+}

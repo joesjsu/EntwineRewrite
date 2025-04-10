@@ -1,0 +1,19 @@
+# apps/api/src/graphql/schemas/notifications.graphql
+
+enum Platform {
+  IOS
+  ANDROID
+  WEB
+}
+
+extend type Mutation {
+  """
+  Registers a device token for the authenticated user to receive push notifications.
+  """
+  registerDeviceToken(token: String!, platform: Platform!): Boolean
+
+  """
+  Unregisters a specific device token for the authenticated user.
+  """
+  unregisterDeviceToken(token: String!): Boolean
+}

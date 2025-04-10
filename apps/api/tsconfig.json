@@ -1,0 +1,19 @@
+{
+  "extends": "@entwine-rewrite/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "module": "NodeNext", // Suitable for Node.js ESM
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "resolveJsonModule": true, // Often useful in backend for config files
+    "baseUrl": "./src", // Base directory for module resolution
+    "paths": {          // Define path aliases
+      "@/*": ["*"]      // Map @/* to src/*
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
