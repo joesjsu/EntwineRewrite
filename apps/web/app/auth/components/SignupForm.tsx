@@ -2,22 +2,21 @@
 
 import React, { useState } from 'react';
 import { useMutation } from '@apollo/client';
-import { REGISTER_MUTATION } from '@/graphql/auth.gql'; // Assuming alias setup
-import { useAuth } from '@/context/AuthContext'; // Assuming alias setup
-import { Button } from '@/components/ui/button'; // Assuming Shadcn UI setup
+import { REGISTER_MUTATION } from '@/graphql/auth.gql';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react"; // For alert icon
+import { Terminal, Heart, UserPlus, Lock } from "lucide-react";
 
-// Define the input type based on the GraphQL schema
 interface RegisterInput {
   phoneNumber: string;
   password: string;
   firstName?: string;
   lastName?: string;
-  email: string; // Added email
+  email: string; // Kept from HEAD
 }
 
 export function SignupForm() {
@@ -26,9 +25,9 @@ export function SignupForm() {
     password: '',
     firstName: '',
     lastName: '',
-    email: '', // Added email state
+    email: '', // Kept from HEAD
   });
-  const { login: loginUser } = useAuth(); // Use login from context to set tokens after successful registration
+  const { login: loginUser } = useAuth();
   const [registerMutation, { loading, error }] = useMutation(REGISTER_MUTATION);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,30 +44,35 @@ export function SignupForm() {
         },
       });
       if (result.data?.register) {
-        // Automatically log the user in after successful registration
-        loginUser({ // Use the login function from context
-            phoneNumber: formData.phoneNumber,
-            password: formData.password
+        loginUser({
+          phoneNumber: formData.phoneNumber,
+          password: formData.password
         });
         console.log('Registration successful, attempting login...');
-        // Optionally redirect user here after successful context update
       }
     } catch (err) {
-      // Error is already captured by the 'error' object from useMutation
       console.error('Registration failed:', err);
     }
   };
 
   return (
-    <Card className="w-full max-w-md border-purple-200 shadow-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center text-purple-700">Create Account</CardTitle>
-        <CardDescription className="text-center">Enter your information to create an account</CardDescription>
+    // Card styling from origin/main
+    <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-xl">
+      {/* CardHeader from origin/main */}
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-center">
+          <Heart className="h-10 w-10 text-primary" />
+        </div>
+        <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+        <CardDescription className="text-center">
+          Join our community and start your journey to meaningful connections
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
+              {/* Label from HEAD */}
               <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
               <Input
                 id="firstName"
@@ -77,10 +81,12 @@ export function SignupForm() {
                 value={formData.firstName}
                 onChange={handleChange}
                 disabled={loading}
-                className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                // Styling from origin/main
+                className="transition-all focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div className="space-y-2">
+              {/* Label from HEAD */}
               <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
               <Input
                 id="lastName"
@@ -89,10 +95,12 @@ export function SignupForm() {
                 value={formData.lastName}
                 onChange={handleChange}
                 disabled={loading}
-                className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                // Styling from origin/main
+                className="transition-all focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
+          {/* Email input block from HEAD */}
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium">Email</Label>
             <Input
@@ -104,57 +112,81 @@ export function SignupForm() {
               onChange={handleChange}
               required
               disabled={loading}
-              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+              // Styling consistent with origin/main
+              className="transition-all focus:ring-2 focus:ring-primary/20"
             />
           </div>
+          {/* Phone input block structure from origin/main */}
           <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="text-sm font-medium">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              name="phoneNumber"
-              type="tel"
-              placeholder="+1234567890"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              required
-              disabled={loading}
-              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-            />
+            <Label htmlFor="phoneNumber" className="text-sm font-medium">
+              Phone Number
+            </Label>
+            <div className="relative">
+              <UserPlus className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                placeholder="+1234567890"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                required
+                disabled={loading}
+                // Styling from origin/main (incl. pl-10)
+                className="pl-10 transition-all focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
+          {/* Password input block structure from origin/main */}
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              disabled={loading}
-              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-            />
+            <Label htmlFor="password" className="text-sm font-medium">
+              Password
+            </Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                disabled={loading}
+                // Styling from origin/main (incl. pl-10)
+                className="pl-10 transition-all focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
           {error && (
-             <Alert variant="destructive">
-               <Terminal className="h-4 w-4" />
-               <AlertTitle>Signup Error</AlertTitle>
-               <AlertDescription>
-                 {error.message || 'An unknown error occurred. Please try again.'}
-               </AlertDescription>
-             </Alert>
+            <Alert variant="destructive">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Registration Error</AlertTitle>
+              <AlertDescription>
+                {error.message || 'An unknown error occurred. Please try again.'}
+              </AlertDescription>
+            </Alert>
           )}
+          {/* Button styling and text from origin/main */}
           <Button
             type="submit"
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            className="w-full h-11 text-base font-medium transition-all"
             disabled={loading}
           >
-            {loading ? 'Creating Account...' : 'Create Account'}
+            {loading ? 'Creating your account...' : 'Sign Up'}
           </Button>
         </form>
       </CardContent>
-      <CardFooter>
-        <p className="text-sm text-center w-full text-gray-600">
-          Already have an account? <a href="/login" className="text-purple-600 hover:text-purple-800 font-medium">Sign in</a>
+      {/* Footer structure and text from origin/main */}
+      <CardFooter className="flex flex-col gap-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          By signing up, you agree to our Terms of Service and Privacy Policy
+        </p>
+        <p className="text-sm">
+          Already have an account?{' '}
+          <a href="/login" className="text-primary hover:underline font-medium">
+            Log in
+          </a>
         </p>
       </CardFooter>
     </Card>
