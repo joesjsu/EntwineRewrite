@@ -77,38 +77,42 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, onTypingChan
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', padding: '10px', borderTop: '1px solid #eee' }}>
+    <div className="flex items-center p-3 border-t border-purple-100 bg-white rounded-b-lg">
       <textarea
         value={inputValue}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         placeholder="Type your message..."
         disabled={disabled}
-        rows={2} // Start with 2 rows, can adjust or make dynamic
-        style={{
-          flexGrow: 1,
-          marginRight: '10px',
-          padding: '8px 10px',
-          borderRadius: '5px',
-          border: '1px solid #ccc',
-          resize: 'none', // Prevent manual resizing by user
-          fontFamily: 'inherit', // Use the same font as the rest of the app
-          fontSize: '1em',
-        }}
+        rows={2}
+        className={`flex-grow mr-3 p-3 rounded-lg border ${
+          disabled ? 'border-gray-200 bg-gray-50' : 'border-purple-200 focus:border-purple-400'
+        } resize-none font-inherit text-base focus:outline-none focus:ring-2 focus:ring-purple-200`}
       />
       <button
         onClick={handleSendClick}
         disabled={disabled || inputValue.trim().length === 0}
-        style={{
-          padding: '10px 15px',
-          borderRadius: '5px',
-          border: 'none',
-          backgroundColor: disabled || inputValue.trim().length === 0 ? '#ccc' : '#007bff', // Example styling
-          color: 'white',
-          cursor: disabled || inputValue.trim().length === 0 ? 'not-allowed' : 'pointer',
-        }}
+        className={`px-4 py-3 rounded-lg border-none ${
+          disabled || inputValue.trim().length === 0
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-purple-600 text-white hover:bg-purple-700 cursor-pointer transition-colors'
+        } font-medium`}
       >
-        Send
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="inline-block"
+        >
+          <path d="M22 2L11 13"></path>
+          <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+        </svg>
       </button>
     </div>
   );

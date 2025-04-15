@@ -18,6 +18,28 @@ type PotentialMatch {
 }
 
 # Extend the main Query type
+
+
+enum SwipeAction {
+  LIKE
+  DISLIKE
+}
+
+input RecordSwipeInput {
+  swipedUserId: ID! # The ID of the user being swiped on
+  action: SwipeAction! # LIKE or DISLIKE
+}
+
+type RecordSwipePayload {
+  success: Boolean!
+  matchCreated: Boolean # True if this swipe resulted in a new match
+}
+
+extend type Mutation {
+  "Records a swipe action (like/dislike) on another user."
+  recordSwipe(input: RecordSwipeInput!): RecordSwipePayload! @auth
+}
+
 extend type Query {
   """
   Fetches potential matches for the currently authenticated user.

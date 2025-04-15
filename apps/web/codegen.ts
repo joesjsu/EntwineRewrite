@@ -10,7 +10,7 @@ const config: CodegenConfig = {
     '../api/src/graphql/schemas/**/*.graphql', // Include all schemas in the subdirectory
   ],
   // Documents are the .gql files containing queries/mutations
-  documents: ['graphql/**/*.{ts,tsx,gql}'], // Include .ts/.tsx files
+  documents: ['graphql/**/*.{ts,tsx,gql}', '!graphql/generated/**/*'], // Exclude generated files
   generates: {
     // Output directory for generated files
     'graphql/generated/graphql.ts': { // Output directly to graphql.ts

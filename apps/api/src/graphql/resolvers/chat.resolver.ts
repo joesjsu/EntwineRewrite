@@ -3,6 +3,7 @@ import { eq, and, asc, or } from 'drizzle-orm'; // Added 'or' import
 import { Resolvers, Message as GraphQLMessage } from '@/graphql/generated/graphql';
 import { ApiContext } from '@/types/context';
 import { GraphQLError } from 'graphql';
+import { logger } from '../../config/logger';
 
 export const chatResolvers: Resolvers = {
   Query: {
@@ -71,7 +72,7 @@ export const chatResolvers: Resolvers = {
         }));
 
       } catch (error: unknown) {
-        console.error(`Error fetching messages for match ${matchId}:`, error);
+        logger.error({ err: error }, `Error fetching messages for match ${matchId}`);
         if (error instanceof GraphQLError) { throw error; } // Re-throw known GraphQL errors
         throw new GraphQLError('Failed to fetch messages.', {
           extensions: { code: 'INTERNAL_SERVER_ERROR' },

@@ -1,36 +1,73 @@
 // apps/api/src/graphql/resolvers/user.resolver.ts
 import type { ApiContext } from '@/types/context';
-import type { User } from '@/__generated__/graphql'; // Assuming GraphQL Code Generator is set up
-
+import type { User, UserRole } from '@/graphql/generated/graphql'; // Updated import
+import { db } from '@/db'; // Import db instance
+import { users } from '@entwine-rewrite/shared'; // Import users schema
+import { eq } from 'drizzle-orm'; // Import eq operator
+import { logger } from '../../config/logger';
 export const userResolver = {
   Query: {
     // Resolver for the 'me' query
     // The @auth directive ensures context.user is defined here
-    me: (_parent: unknown, _args: unknown, context: ApiContext): User | null => {
-      // The directive handles the authentication check.
-      // If we reach here, context.user is guaranteed to exist (unless directive logic changes).
-      // We might need to fetch more user details from the DB based on context.user.id
-      // For now, just return the basic user info from the context.
-      // TODO: Fetch full user profile from DB using context.user.id if needed
+    me: async (_parent: unknown, _args: unknown, context: ApiContext): Promise<User | null> => {
+      // The @auth directive ensures context.user (with id and role) exists
       if (!context.user) {
-         // This should technically be unreachable due to the @auth directive
-         console.error("Error: 'me' resolver reached without authenticated user in context.");
-         return null; // Or throw an error
+        // This check remains as a safeguard, though theoretically unreachable
+        logger.error("Error: 'me' resolver reached without authenticated user in context.");
+        // Depending on strictness, could return null or throw GraphQLError
+        return null;
       }
-      // Map context user (id) to the GraphQL User type structure
-      // This is a placeholder - needs actual DB fetch for full profile
-      return {
-        id: context.user.id.toString(), // Ensure ID is string for GraphQL ID type
-        // Add other fields as null/defaults or fetch from DB
-        firstName: null,
-        lastName: null,
-        gender: null,
-        birthday: null,
-        bio: null,
-        profileComplete: false, // Placeholder - fetch actual value
-        createdAt: new Date().toISOString(), // Placeholder
-        updatedAt: new Date().toISOString(), // Placeholder
-      };
+
+      try {
+        const userResult = await db
+          .select({
+            id: users.id,
+            email: users.email,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profileComplete: users.profileComplete,
+            registrationStep: users.registrationStep,
+            role: users.role,
+            // Include other fields from the User GraphQL type if needed
+            // bio: users.bio,
+            // birthday: users.birthday,
+            // gender: users.gender,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          })
+          .from(users)
+          .where(eq(users.id, context.user.id))
+          .limit(1);
+
+        const dbUser = userResult[0];
+
+        if (!dbUser) {
+          logger.error(`Error: User with ID ${context.user.id} found in context but not in DB.`);
+          // This indicates a data inconsistency issue
+          return null; // Or throw an error
+        }
+
+        // Map DB result to GraphQL User type
+        return {
+          id: dbUser.id.toString(),
+          email: dbUser.email, // Added email
+          firstName: dbUser.firstName,
+          lastName: dbUser.lastName,
+          profileComplete: dbUser.profileComplete,
+          registrationStep: dbUser.registrationStep,
+          role: dbUser.role as UserRole, // Cast role
+          // Map other fields if they were selected
+          // bio: dbUser.bio,
+          // birthday: dbUser.birthday ? dbUser.birthday.toISOString() : null, // Handle date conversion
+          // gender: dbUser.gender,
+          createdAt: dbUser.createdAt.toISOString(), // Convert Date to ISO string
+          updatedAt: dbUser.updatedAt.toISOString(), // Convert Date to ISO string
+        };
+      } catch (error) {
+        logger.error({ err: error }, `Error fetching user data for ID ${context.user.id}`);
+        // Consider throwing a GraphQLError for internal errors
+        return null;
+      }
     },
   },
   // Add Mutation resolvers related to User here if needed

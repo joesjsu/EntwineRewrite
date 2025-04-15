@@ -165,20 +165,41 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ matchId, recipientId, currentUs
   const displayName = recipientName || recipientId;
 
   return (
-    <div style={{ border: '1px solid blue', margin: '10px', display: 'flex', flexDirection: 'column', height: '500px' /* Example height */ }}>
-      <h2 style={{ padding: '10px', margin: 0, borderBottom: '1px solid #eee' }}>
-        Chat with {displayName} (Match: {matchId})
-      </h2>
+    <div className="flex flex-col h-[600px] border border-purple-200 rounded-lg shadow-md bg-white overflow-hidden">
+      <div className="bg-purple-600 text-white px-4 py-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold flex items-center">
+          <div className="w-3 h-3 rounded-full bg-green-400 mr-2"></div>
+          {displayName}
+        </h2>
+        <div className="text-xs opacity-75">Match ID: {matchId}</div>
+      </div>
+      
       {/* Connection Status / Error Banner */}
       {!isConnected && (
-        <div style={{ padding: '10px', backgroundColor: '#f8d7da', color: '#721c24', borderBottom: '1px solid #f5c6cb', textAlign: 'center' }}>
+        <div className="px-4 py-2 bg-red-100 text-red-800 text-center text-sm border-b border-red-200">
           Connection lost. Attempting to reconnect...
         </div>
       )}
 
       {/* Message List Area - Show loading/error states */}
-      {loadingMessages && <p style={{ padding: '10px', textAlign: 'center' }}>Loading messages...</p>}
-      {errorMessages && <p style={{ padding: '10px', textAlign: 'center', color: 'red' }}>Error loading messages: {errorMessages.message}</p>}
+      {loadingMessages && (
+        <div className="flex-grow flex items-center justify-center">
+          <div className="animate-pulse flex space-x-2">
+            <div className="h-2 w-2 bg-purple-400 rounded-full"></div>
+            <div className="h-2 w-2 bg-purple-400 rounded-full"></div>
+            <div className="h-2 w-2 bg-purple-400 rounded-full"></div>
+          </div>
+        </div>
+      )}
+      
+      {errorMessages && (
+        <div className="flex-grow flex items-center justify-center">
+          <p className="text-red-500 text-center px-4">
+            Error loading messages: {errorMessages.message}
+          </p>
+        </div>
+      )}
+      
       {!loadingMessages && !errorMessages && (
         <MessageList messages={messages} currentUserId={currentUserId} />
       )}
@@ -187,14 +208,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ matchId, recipientId, currentUs
       <TypingIndicator isTyping={isTyping} userName={displayName} />
 
       {/* Message Input Area */}
-      <div style={{ padding: '10px', borderTop: '1px solid #eee' }}>
+      <div className="border-t border-purple-100">
         <MessageInput
           onSendMessage={handleSendMessage}
           onTypingChange={handleTypingChange}
           disabled={!isConnected}
         />
         {/* Display sending errors */}
-        {sendError && <p style={{ color: 'red', fontSize: '0.8em', marginTop: '5px', textAlign: 'center' }}>{sendError}</p>}
+        {sendError && (
+          <p className="text-red-500 text-xs px-4 pb-2 text-center">{sendError}</p>
+        )}
       </div>
     </div>
   );

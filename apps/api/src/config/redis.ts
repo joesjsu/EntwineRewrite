@@ -1,11 +1,12 @@
 import Redis from 'ioredis';
-// import { logger } from './logger'; // Assuming a logger exists - Replace with console for now
-const logger = console; // Temporary logger replacement
+import { logger } from './logger'; // Assuming a logger exists
+// const logger = console; // Temporary logger replacement removed
 
-const redisUrl = process.env.REDIS_URL;
+// Determine the Redis URL, prioritizing the test URL if available
+const effectiveRedisUrl = process.env.TEST_REDIS_URL || process.env.REDIS_URL;
 
-if (!redisUrl) {
-  logger.warn('REDIS_URL environment variable not set. Redis client will not connect.');
+if (!effectiveRedisUrl) {
+  logger.warn('Neither TEST_REDIS_URL nor REDIS_URL environment variable is set. Redis client will not connect.');
   // Depending on requirements, you might throw an error here instead
   // throw new Error('REDIS_URL environment variable is required.');
 }
@@ -13,7 +14,7 @@ if (!redisUrl) {
 // Initialize Redis client
 // Pass the URL directly if it exists, otherwise ioredis might try default localhost:6379
 // Add additional options if needed (e.g., password, db number, tls)
-const redisClient = redisUrl ? new Redis(redisUrl, {
+const redisClient = effectiveRedisUrl ? new Redis(effectiveRedisUrl, {
     // Example: Enable TLS if your Redis URL uses rediss://
     // tls: redisUrl.startsWith('rediss://') ? {} : undefined,
     // Add other options like password if needed from env vars
@@ -39,7 +40,7 @@ if (redisClient) {
     // });
 
 } else {
-    logger.warn('Redis client not initialized due to missing REDIS_URL.'); // TODO: Replace console with proper logger
+    logger.warn('Redis client not initialized due to missing TEST_REDIS_URL or REDIS_URL.'); // TODO: Replace console with proper logger
 }
 
 

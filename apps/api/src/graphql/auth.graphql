@@ -19,6 +19,7 @@ input RegisterInput {
   password: String!
   firstName: String
   lastName: String
+  email: String! # Added email field
   # Add other initial fields like gender, birthday if needed for registration step 0
 }
 

@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Function to handle setting auth state after login/refresh
   const setAuthState = (access: string, refresh: string, userData: User) => {
+    console.log(`AuthContext: Storing token under key '${ACCESS_TOKEN_KEY}'`); // Added log
     localStorage.setItem(ACCESS_TOKEN_KEY, access);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
     setAccessToken(access);

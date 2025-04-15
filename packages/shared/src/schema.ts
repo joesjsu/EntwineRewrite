@@ -7,7 +7,8 @@ import { z } from 'zod';
 // export const introScreenTypeEnum = pgEnum('intro_screen_type', ['ai_chat', 'relationship_coach']);
 // export const photoRuleTypeEnum = pgEnum('photo_rule_type', ['Distribution', 'Maximum', 'Minimum']);
 export const platformEnum = pgEnum('platform', ['ios', 'android', 'web']);
-export const userRoleEnum = pgEnum('user_role', ['USER', 'ADMIN']); // Added user role enum
+export const userRoleEnum = pgEnum('user_role', ['USER', 'ADMIN']);
+export const swipeActionEnum = pgEnum('swipe_action', ['like', 'dislike']); // Enum for swipe actions
 
 
 // --- Zod Validation Schemas ---
@@ -56,8 +57,11 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   role: userRoleEnum('role').default('USER').notNull(), // Added role column
+  email: varchar('email', { length: 255 }).unique().notNull(), // Added email column
+  isActive: boolean('is_active').default(true).notNull(), // Added isActive column
 }, (table) => ({
   phoneIdx: uniqueIndex('phone_idx').on(table.phoneNumber),
+  emailIdx: uniqueIndex('email_idx').on(table.email), // Added index for email
 }));
 
 export const userPhotos = pgTable('user_photos', {
@@ -237,6 +241,20 @@ export const photoSettings = pgTable('photo_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const swipes = pgTable('swipes', {
+  swiperId: integer('swiper_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  swipedId: integer('swiped_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: swipeActionEnum('action').notNull(), // 'like' or 'dislike'
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  // Composite primary key to ensure one swipe per user pair
+  pk: primaryKey({ columns: [table.swiperId, table.swipedId] }),
+  // Index to quickly find swipes by a specific user
+  swiperIdx: index('swiper_idx').on(table.swiperId),
+  // Index to quickly find swipes towards a specific user (useful for checking reciprocal likes)
+  swipedIdx: index('swiped_idx').on(table.swipedId),
+}));
+
 export const ratingPhotos = pgTable('rating_photos', {
   id: serial('id').primaryKey(),
   url: text('url').notNull().unique(),
@@ -292,7 +310,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   communicationPreferences: one(communicationPreferences),
   communicationResponsePatterns: one(communicationResponsePatterns),
   deviceTokens: many(userDeviceTokens),
-
+  swipesMade: many(swipes, { relationName: 'swipesMade' }),
+  swipesReceived: many(swipes, { relationName: 'swipesReceived' }),
 }));
 
 export const userPhotosRelations = relations(userPhotos, ({ one }) => ({
@@ -405,6 +424,23 @@ export const communicationPreferencesRelations = relations(communicationPreferen
     references: [users.id],
   }),
 }));
+
+// Add relation from users to swipes
+export const swipesRelations = relations(swipes, ({ one }) => ({
+  swiper: one(users, {
+    fields: [swipes.swiperId],
+    references: [users.id],
+    relationName: 'swipesMade',
+  }),
+  swiped: one(users, {
+    fields: [swipes.swipedId],
+    references: [users.id],
+    relationName: 'swipesReceived',
+  }),
+}));
+
+// Add relation from users to swipes (many swipes made, many swipes received)
+// Need to adjust the existing usersRelations
 
 export const communicationResponsePatternsRelations = relations(communicationResponsePatterns, ({ one }) => ({
   user: one(users, {

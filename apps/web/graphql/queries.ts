@@ -50,6 +50,8 @@ export const GET_ADMIN_USERS = gql`
         profileComplete
         createdAt
         updatedAt
+        email # Added email
+        isActive # Added isActive
         # Add email/phone if needed and available in AdminUser type
       }
     }
@@ -57,3 +59,19 @@ export const GET_ADMIN_USERS = gql`
 `;
 
 // Add other queries needed by the web app here...
+
+// Query for admins to fetch a single user by ID
+export const GET_ADMIN_USER = gql`
+  query GetAdminUser($userId: ID!) {
+    getAdminUser(userId: $userId) {
+      id
+      firstName
+      lastName
+      role
+      profileComplete
+      createdAt
+      updatedAt
+      # Add email/phone if needed and available in AdminUser type
+    }
+  }
+`;

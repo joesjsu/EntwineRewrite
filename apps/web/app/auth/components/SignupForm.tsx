@@ -15,8 +15,9 @@ import { Terminal } from "lucide-react"; // For alert icon
 interface RegisterInput {
   phoneNumber: string;
   password: string;
-  firstName?: string; // Optional based on schema
-  lastName?: string;  // Optional based on schema
+  firstName?: string;
+  lastName?: string;
+  email: string; // Added email
 }
 
 export function SignupForm() {
@@ -25,6 +26,7 @@ export function SignupForm() {
     password: '',
     firstName: '',
     lastName: '',
+    email: '', // Added email state
   });
   const { login: loginUser } = useAuth(); // Use login from context to set tokens after successful registration
   const [registerMutation, { loading, error }] = useMutation(REGISTER_MUTATION);
@@ -58,37 +60,55 @@ export function SignupForm() {
   };
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Sign Up</CardTitle>
-        <CardDescription>Create your account to get started.</CardDescription>
+    <Card className="w-full max-w-md border-purple-200 shadow-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center text-purple-700">Create Account</CardTitle>
+        <CardDescription className="text-center">Enter your information to create an account</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
+              <Input
+                id="firstName"
+                name="firstName"
+                placeholder="John"
+                value={formData.firstName}
+                onChange={handleChange}
+                disabled={loading}
+                className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
+              <Input
+                id="lastName"
+                name="lastName"
+                placeholder="Doe"
+                value={formData.lastName}
+                onChange={handleChange}
+                disabled={loading}
+                className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+              />
+            </div>
+          </div>
           <div className="space-y-2">
-            <Label htmlFor="firstName">First Name</Label>
+            <Label htmlFor="email" className="text-sm font-medium">Email</Label>
             <Input
-              id="firstName"
-              name="firstName"
-              placeholder="John"
-              value={formData.firstName}
+              id="email"
+              name="email"
+              type="email"
+              placeholder="john.doe@example.com"
+              value={formData.email}
               onChange={handleChange}
+              required
               disabled={loading}
+              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input
-              id="lastName"
-              name="lastName"
-              placeholder="Doe"
-              value={formData.lastName}
-              onChange={handleChange}
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Label htmlFor="phoneNumber" className="text-sm font-medium">Phone Number</Label>
             <Input
               id="phoneNumber"
               name="phoneNumber"
@@ -98,10 +118,11 @@ export function SignupForm() {
               onChange={handleChange}
               required
               disabled={loading}
+              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium">Password</Label>
             <Input
               id="password"
               name="password"
@@ -110,6 +131,7 @@ export function SignupForm() {
               onChange={handleChange}
               required
               disabled={loading}
+              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
             />
           </div>
           {error && (
@@ -121,14 +143,18 @@ export function SignupForm() {
                </AlertDescription>
              </Alert>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing up...' : 'Sign Up'}
+          <Button
+            type="submit"
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            disabled={loading}
+          >
+            {loading ? 'Creating Account...' : 'Create Account'}
           </Button>
         </form>
       </CardContent>
       <CardFooter>
-        <p className="text-sm text-center w-full">
-          Already have an account? <a href="/login" className="underline">Log in</a>
+        <p className="text-sm text-center w-full text-gray-600">
+          Already have an account? <a href="/login" className="text-purple-600 hover:text-purple-800 font-medium">Sign in</a>
         </p>
       </CardFooter>
     </Card>

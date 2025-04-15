@@ -17,8 +17,8 @@ import {
   ImageAnalysisOptions,
   ImageAnalysisResponse,
 } from './ai-interface';
-// import { logger } from '../config/logger'; // Assuming a logger exists - Replace with console for now
-const logger = console; // Temporary logger replacement
+import { logger } from '../config/logger'; // Assuming a logger exists
+// const logger = console; // Temporary logger replacement removed
 
 // Helper function to convert base64 string to Google AI Part
 function base64ToGenerativePart(base64Data: string, mimeType: string): Part {
@@ -52,7 +52,7 @@ export class GoogleProvider implements AIProvider {
       );
     }
     this.genAI = new GoogleGenerativeAI(key);
-    logger.info('Google AI Provider initialized.'); // TODO: Replace console with proper logger
+    logger.info('Google AI Provider initialized.');
   }
 
   // Maps our generic ChatMessage role to Google's role
@@ -65,10 +65,10 @@ export class GoogleProvider implements AIProvider {
       case 'system':
         // Google's API handles system prompts differently (often as the first 'user' message or specific config)
         // We'll handle the system prompt in the generateChatCompletion method options
-        logger.warn("System role mapped to 'user' for Google Provider history. System prompt handled separately."); // TODO: Replace console with proper logger
+        logger.warn("System role mapped to 'user' for Google Provider history. System prompt handled separately.");
         return 'user'; // Map system to user for history, handle prompt in options
       default:
-        logger.warn(`Unknown role '${role}', defaulting to 'user'.`); // TODO: Replace console with proper logger
+        logger.warn(`Unknown role '${role}', defaulting to 'user'.`);
         return 'user';
     }
   }
@@ -91,7 +91,7 @@ export class GoogleProvider implements AIProvider {
       // Find the last user message to use as the prompt
       const lastUserMessage = messages.reverse().find(msg => msg.role === 'user');
       if (!lastUserMessage) {
-        throw new Error('No user message found in the chat history.');
+        throw new Error('Invalid input: No user message found in the chat history.'); // More specific message
       }
       const prompt = lastUserMessage.content;
 
@@ -115,7 +115,7 @@ export class GoogleProvider implements AIProvider {
          // Prefer the dedicated system instruction field if the model/SDK supports it
          // This structure might change based on SDK updates
          systemInstructionContent = { role: "system", parts: [{ text: systemPromptMessage.content }] };
-         logger.info("Using system instruction parameter for Google AI."); // TODO: Replace console with proper logger
+         logger.info("Using system instruction parameter for Google AI.");
          // If systemInstruction is not directly supported in startChat like this,
          // you might need to adjust how it's passed based on the specific Google SDK version.
       }
@@ -156,7 +156,7 @@ export class GoogleProvider implements AIProvider {
               totalTokens: promptTokens.totalTokens + completionTokens.totalTokens,
           };
       } catch (tokenError) {
-          logger.error('Failed to count tokens for Google AI:', tokenError); // TODO: Replace console with proper logger
+          logger.error({ err: tokenError }, 'Failed to count tokens for Google AI'); // Log error object
           // Fallback or ignore if token counting fails
       }
 
@@ -167,8 +167,9 @@ export class GoogleProvider implements AIProvider {
         usage: usage,
       };
     } catch (error: any) {
-      logger.error('Error calling Google AI for chat completion:', error); // TODO: Replace console with proper logger
-      throw new Error(`Google AI Error: ${error.message || 'Unknown error'}`);
+      logger.error({ err: error }, 'Error calling Google AI for chat completion'); // Log error object
+      // Wrap original error for better context
+      throw new Error(`Google AI chat completion failed: ${error.message || 'Unknown error'}`, { cause: error });
     }
   }
 
@@ -185,12 +186,12 @@ export class GoogleProvider implements AIProvider {
             // Handle URL - requires fetching the image data first
             // This is a simplified example; robust fetching needed
             const response = await fetch(imageUrlOrBase64);
-            if (!response.ok) throw new Error(`Failed to fetch image URL: ${response.statusText}`);
+            if (!response.ok) throw new Error(`Network Error: Failed to fetch image URL ${imageUrlOrBase64} - Status: ${response.status} ${response.statusText}`); // More specific
             const buffer = await response.arrayBuffer();
             const base64Data = Buffer.from(buffer).toString('base64');
             const mimeType = response.headers.get('content-type');
             if (!mimeType) {
-                logger.warn(`Could not determine MIME type from URL response headers for ${imageUrlOrBase64}. Defaulting to image/jpeg.`); // TODO: Replace console
+                logger.warn(`Could not determine MIME type from URL response headers for ${imageUrlOrBase64}. Defaulting to image/jpeg.`);
                 imagePart = base64ToGenerativePart(base64Data, 'image/jpeg'); // Use default if null/undefined
             } else {
                 // Explicitly ensure mimeType is a string here, although the `if` should guarantee it.
@@ -199,28 +200,25 @@ export class GoogleProvider implements AIProvider {
                 } else {
                    // This case should theoretically not be reachable due to the `if (!mimeType)` check above,
                    // but we handle it defensively to satisfy the compiler.
-                   logger.error(`Unexpected state: mimeType is not a string after check for ${imageUrlOrBase64}.`); // TODO: Replace console
-                   throw new Error('Internal error processing image MIME type.');
+                   logger.error(`Unexpected state: mimeType is not a string after check for ${imageUrlOrBase64}.`);
+                   throw new Error('Internal Server Error: Unexpected issue processing image MIME type.'); // More specific
                 }
             }
         } else if (imageUrlOrBase64.startsWith('data:image')) {
             // Handle base64 data URI
             const mimeType = getMimeTypeFromBase64(imageUrlOrBase64);
-            if (!mimeType) throw new Error('Could not determine MIME type from base64 string.');
+            if (!mimeType) {
+                 throw new Error('Invalid Input: Could not determine MIME type from base64 data URI.'); // More specific
+            }
+            // If we reach here, mimeType is guaranteed to be a string
             const base64Data = imageUrlOrBase64.split(',')[1];
-             // Explicitly check type again, although the check on line 209 should guarantee it's a string
-             if (typeof mimeType === 'string') {
-                imagePart = base64ToGenerativePart(base64Data, mimeType);
-             } else {
-                 // This path should be unreachable
-                 throw new Error('Internal error processing base64 MIME type.');
-             }
+            imagePart = base64ToGenerativePart(base64Data, mimeType);
         }
          else {
             // Assume raw base64 - requires mime type knowledge or default
              // throw new Error('Raw base64 image data requires a known MIME type.');
              // For now, let's assume JPEG if not a data URI or URL, which might be incorrect
-             logger.warn("Assuming image/jpeg for raw base64 string."); // TODO: Replace console with proper logger
+             logger.warn("Assuming image/jpeg for raw base64 string.");
              imagePart = base64ToGenerativePart(imageUrlOrBase64, 'image/jpeg');
         }
 
@@ -244,8 +242,9 @@ export class GoogleProvider implements AIProvider {
             description: description,
         };
     } catch (error: any) {
-        logger.error('Error calling Google AI for image analysis:', error); // TODO: Replace console with proper logger
-        throw new Error(`Google AI Image Analysis Error: ${error.message || 'Unknown error'}`);
+        logger.error({ err: error }, 'Error calling Google AI for image analysis'); // Log error object
+        // Wrap original error
+        throw new Error(`Google AI image analysis failed: ${error.message || 'Unknown error'}`, { cause: error });
     }
   }
 
@@ -261,10 +260,10 @@ export class GoogleProvider implements AIProvider {
         const result = await model.countTokens(text);
         return result.totalTokens;
     } catch (error: any) {
-        logger.error(`Error counting tokens for model ${modelName} with Google AI:`, error); // TODO: Replace console with proper logger
+        logger.error({ err: error }, `Error counting tokens for model ${modelName} with Google AI`); // Log error object
 
         // Fallback using tiktoken if Google's count fails (optional)
-        logger.warn(`Falling back to tiktoken for model ${modelName} token count.`); // TODO: Replace console with proper logger
+        logger.warn(`Falling back to tiktoken for model ${modelName} token count.`);
         try {
             // Tiktoken might not have perfect mappings for all Gemini models.
             // Use a close equivalent like 'gpt-4' or handle based on model knowledge.
@@ -273,8 +272,9 @@ export class GoogleProvider implements AIProvider {
             encoding.free();
             return tokens.length;
         } catch (tiktokenError: any) {
-            logger.error('Tiktoken fallback failed:', tiktokenError); // TODO: Replace console with proper logger
-            throw new Error(`Failed to count tokens using Google AI and Tiktoken fallback: ${tiktokenError.message}`);
+            logger.error({ err: tiktokenError }, 'Tiktoken fallback failed'); // Log error object
+            // Wrap original error
+            throw new Error(`Token counting failed using Google AI and Tiktoken fallback: ${tiktokenError.message}`, { cause: tiktokenError });
         }
     }
   }

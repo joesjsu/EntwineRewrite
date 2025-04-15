@@ -5,6 +5,7 @@ import { Redis } from 'ioredis'; // Import Redis type
 import * as schema from '@entwine-rewrite/shared';
 import { eq, ne, and, or, sql, gte, lte, notInArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { pushService } from '../../services/push.service'; // Import Push Service
 // import { logger } from '../../config/logger'; // Assuming logger exists
 const logger = console; // Temporary logger replacement
 
@@ -171,7 +172,7 @@ export class MatchingService {
       // Users younger than minAge have birthdays AFTER this date
       const maxBirthDate = minAge ? new Date(now.getFullYear() - minAge, now.getMonth(), now.getDate()) : undefined;
       // Users older than maxAge have birthdays BEFORE this date
-      const minBirthDate = maxAge ? new Date(now.getFullYear() - maxAge - 1, now.getMonth(), now.getDate()) : undefined;
+      const minBirthDate = maxAge ? new Date(now.getFullYear() - maxAge, now.getMonth(), now.getDate()) : undefined; // Corrected year calculation
 
       // 3. Find users this user has already matched with (either way)
       const existingMatchUserIds = await db
@@ -398,6 +399,13 @@ export class MatchingService {
         // TODO: Add distance score when location is available
     }
     breakdown['datingPreferences'] = prefScore;
+
+    // --- Return 0 immediately if reciprocity check fails ---
+    if (prefScore === 0) {
+        logger.info(`Reciprocity check failed between user ${userA.id} and candidate ${userB.id}.`);
+        // No need to cache a score of 0 due to reciprocity failure, as it's a fundamental mismatch
+        return { score: 0, breakdown };
+    }
     totalScore += prefScore * weights.datingPreferences;
 
 
@@ -556,6 +564,144 @@ export class MatchingService {
 
     return result;
   }
+
+
+  /**
+   * Records a swipe action (like/dislike) from one user to another.
+   * If a 'like' results in a mutual match, creates a match record.
+   * @param swiperId The ID of the user performing the swipe.
+   * @param swipedId The ID of the user being swiped on.
+   * @param action The swipe action ('like' or 'dislike').
+   * @returns A boolean indicating if a new match was created.
+   */
+  async recordSwipe(swiperId: number, swipedId: number, action: 'like' | 'dislike'): Promise<boolean> {
+    logger.info(`Recording swipe: User ${swiperId} ${action}s User ${swipedId}`);
+
+    if (swiperId === swipedId) {
+      logger.warn(`User ${swiperId} attempted to swipe on themselves.`);
+      // Optionally throw an error or just return false
+      return false;
+    }
+
+    try {
+      // 1. Insert the swipe record. Ignore conflicts (user already swiped).
+      await db.insert(schema.swipes)
+        .values({ swiperId, swipedId, action })
+        .onConflictDoNothing(); // Don't update if swipe already exists
+
+      logger.debug(`Swipe recorded for ${swiperId} -> ${swipedId} (${action})`);
+
+      // 2. If it was a 'like', check for a reciprocal like to create a match.
+      if (action === 'like') {
+        const reciprocalLike = await db.query.swipes.findFirst({
+          where: and(
+            eq(schema.swipes.swiperId, swipedId), // Swiped user liked the swiper
+            eq(schema.swipes.swipedId, swiperId),
+            eq(schema.swipes.action, 'like')
+          )
+        });
+
+        if (reciprocalLike) {
+          logger.info(`Mutual like detected between ${swiperId} and ${swipedId}! Creating match.`);
+
+          // 3. Check if a match record already exists (shouldn't happen if swipe logic is correct, but good safeguard)
+          const existingMatch = await db.query.matches.findFirst({
+            where: or(
+              and(eq(schema.matches.user1Id, swiperId), eq(schema.matches.user2Id, swipedId)),
+              and(eq(schema.matches.user1Id, swipedId), eq(schema.matches.user2Id, swiperId))
+            )
+          });
+
+          if (existingMatch) {
+            logger.warn(`Match record already exists between ${swiperId} and ${swipedId} (ID: ${existingMatch.id}). Skipping creation.`);
+            return false; // Match already existed
+          }
+
+          // 4. Create the match record
+          // Fetch profiles again to calculate initial score (or use cached/recent score)
+          const userA = await queryUserWithProfile(swiperId, this.redis);
+          const userB = await queryUserWithProfile(swipedId, this.redis);
+
+          let compatibilityScore = 0;
+          let scoreBreakdown: Record<string, number> | undefined = undefined;
+
+          if (userA && userB) {
+            const compatResult = await this.calculateCompatibility(userA, userB);
+            compatibilityScore = compatResult.score;
+            scoreBreakdown = compatResult.breakdown;
+          } else {
+            logger.error(`Could not fetch full profiles for match creation between ${swiperId} and ${swipedId}. Using score 0.`);
+          }
+
+          // Insert the match and get the new match ID
+          const insertedMatch = await db.insert(schema.matches).values({
+            user1Id: swiperId,
+            user2Id: swipedId,
+            status: 'matched', // Set status to matched
+            // Convert score to string with 2 decimal places for 'decimal' type
+            matchPercentage: (compatibilityScore * 100).toFixed(2),
+            scores: scoreBreakdown, // Store breakdown if available
+            // expiresAt: null, // Set expiration if applicable
+          }).returning({ id: schema.matches.id }); // Return the ID of the new match
+
+          const newMatchId = insertedMatch[0]?.id;
+
+          if (!newMatchId) {
+             logger.error(`Failed to retrieve ID after creating match between ${swiperId} and ${swipedId}. Cannot send notifications.`);
+             // Still return true as the match was likely created, but log the error.
+             return true;
+          }
+
+          logger.info(`Match created successfully between ${swiperId} and ${swipedId} with ID ${newMatchId}.`);
+
+          // Trigger notifications/events for the new match using newMatchId
+          try {
+            // Fetch device tokens for both users
+            const [tokens1, tokens2] = await Promise.all([
+              pushService.getDeviceTokensForUser(swiperId),
+              pushService.getDeviceTokensForUser(swipedId)
+            ]);
+
+            const notificationPayload = {
+              title: "It's a Match!",
+              body: `You matched with ${userB?.firstName || 'someone'}!`, // Use userB's name for userA's notification
+              custom: { type: 'new_match', matchId: newMatchId, matchedUserId: swipedId }, // Use newMatchId
+            };
+            const notificationPayloadReverse = {
+              title: "It's a Match!",
+              body: `You matched with ${userA?.firstName || 'someone'}!`, // Use userA's name for userB's notification
+              custom: { type: 'new_match', matchId: newMatchId, matchedUserId: swiperId }, // Use newMatchId
+            };
+
+            // Send notifications (fire and forget for now, add more robust error handling if needed)
+            if (tokens1 && tokens1.length > 0) {
+              logger.info(`Sending new match notification to user ${swiperId}`);
+              pushService.sendNotification(tokens1, notificationPayload).catch((err: any) => logger.error({err}, `Failed push notification to user ${swiperId}`));
+            }
+            if (tokens2 && tokens2.length > 0) {
+              logger.info(`Sending new match notification to user ${swipedId}`);
+              pushService.sendNotification(tokens2, notificationPayloadReverse).catch((err: any) => logger.error({err}, `Failed push notification to user ${swipedId}`));
+            }
+
+            // TODO: Emit Socket.IO event as well
+            // Example: io.to(swiperId.toString()).to(swipedId.toString()).emit('new match', { user1: swiperId, user2: swipedId });
+
+          } catch (notifyError) {
+             logger.error({err: notifyError}, `Failed to send new match notifications for match between ${swiperId} and ${swipedId}`);
+          }
+          return true; // New match created
+        }
+      }
+
+      return false; // No new match created
+    } catch (error) {
+      logger.error(`Error recording swipe for ${swiperId} -> ${swipedId}:`, error);
+      // Depending on policy, re-throw or return false
+      // Consider specific error handling (e.g., DB constraint violations)
+      return false;
+    }
+  }
+
 
   // TODO: Add methods for recording swipes (likes/dislikes)
   // TODO: Add method for creating a match record when mutual like occurs

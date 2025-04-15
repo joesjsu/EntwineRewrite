@@ -24,12 +24,13 @@ type AdminUser {
   id: ID!
   firstName: String
   lastName: String
-  # email: String # TODO: Add if needed from DB schema
+  email: String # TODO: Add if needed from DB schema
   # phone: String # TODO: Add if needed from DB schema
   role: UserRole! # Assumes UserRole enum is globally available
   profileComplete: Boolean!
   createdAt: DateTime! # Assumes DateTime scalar is defined
   updatedAt: DateTime! # Assumes DateTime scalar is defined
+  isActive: Boolean! # Added isActive status
 }
 
 # Represents a paginated list of admin users
@@ -49,6 +50,41 @@ input UpdateAiFeatureConfigInput {
   modelName: String!
 }
 
+# Input type for updating user details by an admin
+input UpdateAdminUserInput {
+  # The ID of the user to update
+  # The ID of the user to update
+  userId: ID!
+  # Optional new first name
+  firstName: String
+  # Optional new last name
+  lastName: String
+  # Optional new role (must be a valid UserRole)
+  role: UserRole
+  # Optional new profile completion status
+  profileComplete: Boolean
+  # Add other editable fields as needed (e.g., email, phone - ensure they exist in AdminUser type first)
+}
+
+
+"Payload returned after successfully impersonating a user."
+type ImpersonationPayload {
+  "The access token to use for impersonation."
+  accessToken: String!
+  "The refresh token associated with the impersonation session."
+  refreshToken: String!
+  "The user object of the impersonated user."
+  user: User! # Include the user object for client convenience
+}
+
+# Input type for setting user active status
+input SetAdminUserStatusInput {
+  # The ID of the user to update
+  userId: ID!
+  # The desired active status
+  isActive: Boolean!
+}
+
 extend type Query {
   # Retrieves all current AI feature configurations. Requires admin privileges.
   getAiFeatureConfigs: [AiFeatureConfig!]! @auth(requires: ADMIN)
@@ -60,9 +96,20 @@ extend type Query {
 
   # Retrieves a specific user by ID for administration. Requires admin privileges.
   getAdminUser(userId: ID!): AdminUser @auth(requires: ADMIN)
-} # Moved closing brace here
+}
 
 extend type Mutation {
   # Updates the configuration for a specific AI feature. Requires admin privileges.
-  updateAiFeatureConfig(input: UpdateAiFeatureConfigInput!): AiFeatureConfig @auth(requires: ADMIN) # Placeholder for auth directive
+  updateAiFeatureConfig(input: UpdateAiFeatureConfigInput!): AiFeatureConfig @auth(requires: ADMIN)
+
+  # Updates details for a specific user. Requires admin privileges.
+  updateAdminUser(input: UpdateAdminUserInput!): AdminUser @auth(requires: ADMIN)
+
+  # Sets the active status for a specific user. Requires admin privileges.
+  setAdminUserStatus(input: SetAdminUserStatusInput!): AdminUser @auth(requires: ADMIN)
+}
+
+extend type Mutation {
+  "Allows an admin to impersonate another user. Returns tokens for the target user."
+  impersonateUser(userId: ID!): ImpersonationPayload! @auth # Ensure only authenticated users can call
 }

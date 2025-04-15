@@ -1,6 +1,7 @@
 import { authService } from '../../services/auth.service'; // Import the singleton instance
 import { MutationResolvers } from '../generated/graphql'; // Import generated types
 import { ApiContext } from '../../types/context'; // Import context type if needed
+import { logger } from '../../config/logger';
 
 // Define the resolvers for the Mutation type, specifically for auth operations
 const authResolver: MutationResolvers = {
@@ -13,7 +14,7 @@ const authResolver: MutationResolvers = {
       return authPayload;
     } catch (error: any) {
       // Handle specific errors (e.g., user already exists) or rethrow
-      console.error('Registration Error:', error.message);
+      logger.error({ err: error }, 'Registration Error');
       // Consider using ApolloError for better client-side error handling
       throw new Error(error.message || 'Failed to register user.');
     }
@@ -26,7 +27,7 @@ const authResolver: MutationResolvers = {
       const authPayload = await authService.login(input);
       return authPayload;
     } catch (error: any) {
-      console.error('Login Error:', error.message);
+      logger.error({ err: error }, 'Login Error');
       // Handle specific errors (e.g., invalid credentials)
       throw new Error(error.message || 'Failed to login.');
     }
@@ -39,7 +40,7 @@ const authResolver: MutationResolvers = {
       const authPayload = await authService.refreshToken(token);
       return authPayload;
     } catch (error: any) {
-      console.error('RefreshToken Error:', error.message);
+      logger.error({ err: error }, 'RefreshToken Error');
       // Handle specific errors (e.g., invalid/expired token)
       throw new Error(error.message || 'Failed to refresh token.');
     }

@@ -4,9 +4,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Redis } from 'ioredis'; // Import Redis type
 import redisClient from '../config/redis'; // Import Redis client instance (default export)
-import { User } from '../graphql/generated/graphql'; // Import the generated User type
-type RegisterInput = any; // TODO: Replace with generated type
-type LoginInput = any;    // TODO: Replace with generated type
+import { logger } from '../config/logger'; // Import structured logger
+import { User, RegisterInput, LoginInput } from '../graphql/generated/graphql'; // Import generated types
 // Type for the final payload returned by public methods
 type AuthPayloadWithUser = {
   accessToken: string;
@@ -25,6 +24,8 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secre
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY = '7d';
 
+logger.debug('[Auth Service Debug] Token configuration - Access token expiry:', { expiry: ACCESS_TOKEN_EXPIRY });
+logger.debug('[Auth Service Debug] Token configuration - Refresh token expiry:', { expiry: REFRESH_TOKEN_EXPIRY });
 if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
   console.warn('JWT secrets are not set in environment variables! Using default insecure secrets.');
   // In a real app, you should throw an error or use a more secure fallback/config system
@@ -37,12 +38,12 @@ export class AuthService {
 
   constructor(redis: Redis) {
     this.redis = redis;
-    console.log('AuthService initialized with Redis client.');
+    logger.info('AuthService initialized with Redis client.');
   }
 
   // Placeholder for JWT generation
   private async generateTokens(userId: number): Promise<TokenPayload> { // Return only tokens
-    console.log(`Generating tokens for user ${userId}`);
+    logger.debug(`Generating tokens for user ${userId}`);
     // Implement actual JWT signing
     const accessToken = jwt.sign({ sub: userId }, EFFECTIVE_JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
     const refreshToken = jwt.sign({ sub: userId }, EFFECTIVE_JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
@@ -50,13 +51,43 @@ export class AuthService {
     // Consider a more robust strategy (e.g., multiple tokens per user) if needed.
     const redisKey = `refreshToken:${userId}`;
     await this.redis.set(redisKey, refreshToken, 'EX', 60 * 60 * 24 * 7); // 7 days expiry in seconds
-    console.log(`Stored refresh token for user ${userId} in Redis.`);
+    logger.debug(`Stored refresh token for user ${userId} in Redis.`);
 
     return { accessToken, refreshToken }; // Only return tokens here
   }
 
+  /**
+   * Generates access and refresh tokens for impersonation purposes.
+   * IMPORTANT: This method DOES NOT store the refresh token in Redis,
+   * as these tokens are intended for immediate use by the impersonating admin.
+   * @param targetUserId The ID of the user to impersonate.
+   * @param targetUserRole The role of the user to impersonate (optional, include if needed in token payload).
+   * @returns An object containing the accessToken and refreshToken.
+   */
+  public async generateImpersonationTokens(targetUserId: number, targetUserRole?: string): Promise<TokenPayload> {
+    logger.debug(`Generating IMPERSONATION tokens for user ${targetUserId} with role ${targetUserRole || 'N/A'}`);
+
+    // Define payload - include role if provided, adjust as needed for your token strategy
+    const payload: { sub: number; role?: string } = { sub: targetUserId };
+    if (targetUserRole) {
+      payload.role = targetUserRole;
+    }
+
+    // Sign tokens with potentially shorter expiry for impersonation? (Optional)
+    // const impersonationAccessTokenExpiry = '5m';
+    // const impersonationRefreshTokenExpiry = '15m';
+
+    const accessToken = jwt.sign(payload, EFFECTIVE_JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY /* or impersonationAccessTokenExpiry */ });
+    const refreshToken = jwt.sign({ sub: targetUserId }, EFFECTIVE_JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY /* or impersonationRefreshTokenExpiry */ });
+
+    // DO NOT store this refresh token in Redis under the target user's key.
+    logger.debug(`Generated impersonation tokens for user ${targetUserId}. Refresh token NOT stored.`);
+
+    return { accessToken, refreshToken };
+  }
+
   async register(input: RegisterInput): Promise<AuthPayloadWithUser> { // Return type includes user
-    console.log('AuthService: Registering user', input.phoneNumber);
+    logger.info('AuthService: Registering user', { phoneNumber: input.phoneNumber });
 
     // 1. Check if user already exists
     const existingUser = await db.query.users.findFirst({
@@ -79,6 +110,7 @@ export class AuthService {
       // Set initial registration step, profileComplete status etc.
       registrationStep: 0,
       profileComplete: false,
+     email: input.email, // Added email from input
     }).returning({ id: users.id });
 
     // Check if user creation was successful and ID exists
@@ -136,7 +168,7 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<AuthPayloadWithUser> { // Return type includes user
-    console.log('AuthService: Logging in user', input.phoneNumber);
+    logger.info('AuthService: Logging in user', { phoneNumber: input.phoneNumber });
 
     // 1. Find the user by phone number
     // Fetch user including all fields needed for the GraphQL User type
@@ -192,7 +224,7 @@ export class AuthService {
   }
 
   async refreshToken(token: string): Promise<AuthPayloadWithUser> { // Return type includes user
-    console.log('AuthService: Refreshing token');
+    logger.info('AuthService: Refreshing token');
 
     try {
       // 1. Verify the refresh token structure *first* (cheap check)
@@ -253,7 +285,7 @@ export class AuthService {
 
       // 7. Generate new tokens (access and refresh for rotation)
       // generateTokens will automatically store the new refresh token in Redis, overwriting the old one.
-      console.log(`Refresh token verified via Redis & JWT for user ${userId}, generating new tokens.`);
+      logger.debug(`Refresh token verified via Redis & JWT for user ${userId}, generating new tokens.`);
       const newTokens = await this.generateTokens(userId); // Await token generation/storage
 
       // Return new tokens and the fetched user data
@@ -276,7 +308,7 @@ export class AuthService {
       };
       return { ...newTokens, user: userPayload };
     } catch (error: any) {
-      console.error('Refresh token error:', error.message);
+      logger.error('Refresh token error:', error); // Pass the full error object
       // Handle specific JWT errors like TokenExpiredError, JsonWebTokenError
       if (error.name === 'TokenExpiredError') {
         throw new Error('Refresh token expired.');
@@ -292,8 +324,29 @@ export class AuthService {
 
   // async refreshToken(token: string): Promise<AuthPayload> { ... } // Method implemented above
 
-  // TODO: Add verifyAccessToken method (used in context setup)
-  // verifyAccessToken(token: string): { userId: number } | null { ... }
+  verifyAccessToken(token: string): { userId: number } | null {
+    const secret = process.env.JWT_ACCESS_SECRET;
+    if (!secret) {
+      // Assuming logger is imported and available
+      logger.error('JWT_ACCESS_SECRET is not set. Cannot verify access token.');
+      return null;
+    }
+    try {
+      // Assuming jwt from jsonwebtoken is imported and available
+      const decoded = jwt.verify(token, secret) as { sub: string }; // Assuming 'sub' contains the user ID as a string
+      const userId = parseInt(decoded.sub, 10);
+      if (isNaN(userId)) {
+         logger.error('Invalid user ID found in token payload:', decoded.sub);
+         return null;
+      }
+      logger.debug(`Access token verified successfully for user ID: ${userId}`);
+      return { userId };
+    } catch (error: any) {
+      logger.error('Access token verification failed:', error.message);
+      return null;
+    }
+  }
+
 }
 
 // Export a singleton instance

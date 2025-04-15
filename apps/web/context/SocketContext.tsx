@@ -1,7 +1,8 @@
 'use client'; // This needs to be a client component
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'; // Added useRef
 import { io, Socket } from 'socket.io-client';
+import { useAuth } from './AuthContext'; // Import useAuth
 
 // Define the shape of the context data
 interface SocketContextType {
@@ -29,36 +30,52 @@ interface SocketProviderProps {
 
 // Create the provider component
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
+  const { accessToken, isLoading } = useAuth(); // Get accessToken and isLoading from AuthContext
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  // const { token } = props; // Get token if passed
+  const currentSocketRef = useRef<Socket | null>(null); // Ref to hold the current socket instance for cleanup
+
+  // Define socketUrl outside the effect
+  // TODO: Replace with actual API URL from environment variables
+  const socketUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
   useEffect(() => {
-    // TODO: Replace with actual API URL from environment variables
-    const socketUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
-    // TODO: Get the actual auth token (e.g., from local storage or auth context)
-    // For now, using a placeholder. This needs proper integration with auth state.
-    const authToken = localStorage.getItem('accessToken'); // Example: retrieve token
+    // Use the accessToken from AuthContext
+    console.log(`SocketProvider: Auth token state changed. Current token: ${accessToken ? 'Exists' : 'Null'}`);
 
-    if (!authToken) {
-        console.warn('SocketProvider: No auth token found, socket connection not established.');
-        // Optionally handle redirect to login or show a message
-        return;
+    // Disconnect previous socket if it exists and token changes (or becomes null)
+    if (currentSocketRef.current) {
+        console.log('SocketProvider: Disconnecting previous socket due to token change or effect re-run.');
+        currentSocketRef.current.disconnect();
+        setSocket(null);
+        setIsConnected(false);
+        currentSocketRef.current = null;
     }
 
-    console.log(`SocketProvider: Attempting to connect to ${socketUrl}`);
+    // Wait until auth is resolved AND token is available
+    if (isLoading || !accessToken) {
+        if (isLoading) {
+            console.log('SocketProvider: Auth context is loading, waiting to connect socket.');
+        } else {
+            // This case means loading is false, but accessToken is still null (i.e., user is not logged in)
+            console.warn('SocketProvider: Auth context loaded, but no auth token available. Socket connection not established.');
+        }
+        return; // Don't attempt connection if loading or no token
+    }
+
+    console.log(`SocketProvider: Attempting to connect to ${socketUrl} with token.`);
+    console.log('[Socket Context Debug] Token being sent for auth:', accessToken ? `${accessToken.substring(0, 10)}...` : 'null');
     const newSocket = io(socketUrl, {
-      // Send auth token for middleware verification on the server
       auth: {
-        token: authToken,
+        token: accessToken, // Use the token from AuthContext
       },
       // Optional: Add reconnection options if needed
       // reconnectionAttempts: 5,
       // reconnectionDelay: 1000,
     });
-
-    setSocket(newSocket);
+setSocket(newSocket);
+currentSocketRef.current = newSocket; // Store the new socket instance in the ref
 
     // --- Event Listeners ---
     newSocket.on('connect', () => {
@@ -85,14 +102,15 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     });
 
     // --- Cleanup on component unmount ---
+    // --- Cleanup on component unmount or before effect re-runs ---
     return () => {
-      console.log('SocketProvider: Disconnecting socket.');
+      console.log('SocketProvider: Cleaning up effect. Disconnecting socket.');
       newSocket.disconnect();
       setSocket(null);
       setIsConnected(false);
+      currentSocketRef.current = null; // Clear the ref on cleanup
     };
-    // Add dependency on the auth token if it's passed as a prop or comes from another context
-  }, [/* token */]); // Re-run effect if the token changes
+  }, [accessToken, isLoading, socketUrl]); // Re-run effect if accessToken, isLoading, or socketUrl changes
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

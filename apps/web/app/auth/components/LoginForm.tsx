@@ -44,34 +44,39 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Login</CardTitle>
-        <CardDescription>Enter your phone number and password to access your account.</CardDescription>
+    <Card className="w-full max-w-md border-purple-200 shadow-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center text-purple-700">Welcome Back</CardTitle>
+        <CardDescription className="text-center">Enter your credentials to access your account</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Label htmlFor="phoneNumber" className="text-sm font-medium">Phone Number</Label>
             <Input
               id="phoneNumber"
-              type="tel" // Use tel type for phone numbers
+              type="tel"
               placeholder="+1234567890"
               value={phoneNumber}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumber(e.target.value)}
               required
-              disabled={isLoading} // Keep only this one correct attribute
+              disabled={isLoading}
+              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+              <a href="#" className="text-xs text-purple-600 hover:text-purple-800">Forgot password?</a>
+            </div>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               required
-              disabled={isLoading} // Use isLoading state variable
+              disabled={isLoading}
+              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
             />
           </div>
           {error && (
@@ -83,14 +88,18 @@ export function LoginForm() {
                </AlertDescription>
              </Alert>
           )}
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Login'}
+          <Button
+            type="submit"
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Sign In'}
           </Button>
         </form>
       </CardContent>
       <CardFooter>
-        <p className="text-sm text-center w-full">
-          Don't have an account? <a href="/signup" className="underline">Sign up</a>
+        <p className="text-sm text-center w-full text-gray-600">
+          Don't have an account? <a href="/signup" className="text-purple-600 hover:text-purple-800 font-medium">Sign up</a>
         </p>
       </CardFooter>
     </Card>

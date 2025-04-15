@@ -1,48 +1,35 @@
-import { GraphQLError } from 'graphql'; // Import GraphQLError for user-friendly errors
+import { GraphQLError } from 'graphql';
+import { ApolloServerErrorCode } from '@apollo/server/errors'; // For standard error codes
+// Removed incorrect AuthenticationError import
 import { coachingService } from '../../modules/coaching/coaching.service';
 import { SendRegistrationMessageInputSchema, RequestChatFeedbackInputSchema, messages } from '@entwine-rewrite/shared'; // Import Zod schemas and messages table from shared package
 import { db } from '../../db'; // Import db instance
 import { eq, desc, and } from 'drizzle-orm'; // Import Drizzle operators
-// import { GraphqlContext } from '../context'; // Defined locally below
-// import { QueryResolvers, MutationResolvers, CoachConfig as GqlCoachConfig, RegistrationCoachTurn as GqlRegistrationCoachTurn, ChatFeedback as GqlChatFeedback } from '../generated/graphql'; // Use generated types (TODO: Generate types)
-// import { logger } from '../../config/logger'; // Use actual logger (TODO: Implement logger)
-const logger = console; // Temporary logger
+import { GraphqlContext } from '../../types/context'; // Corrected path for context definition
+import {
+ QueryResolvers,
+ MutationResolvers,
+ CoachConfig, // Assuming this is the generated type for getCoachConfig result
+ RegistrationCoachTurn,
+ ChatFeedback,
+ SendRegistrationMessageInput, // Corrected generated args type
+ RequestChatFeedbackInput // Corrected generated args type
+} from '../generated/graphql'; // Import generated types
+import { logger } from '../../config/logger'; // Use actual logger
 
-// Define a basic context type for now if not generated
-interface GraphqlContext {
-  userId?: string; // Assuming auth middleware adds userId to context
-  db: typeof db; // Add db instance to context type
-  // Add other context properties like loaders, etc.
-}
 
-// Define basic resolver argument types if not generated
-interface SendRegistrationMessageArgs {
-    input: {
-        message: string;
-        currentState: any; // Corresponds to JSON scalar
-    }
-}
 
-// Define args type based on new schema input
-interface RequestChatFeedbackArgs {
-    input: {
-        chatId: string;
-        scope: 'RECENT' | 'FULL' | 'DRAFT';
-        draftContent?: string | null;
-        recentMessageCount?: number | null;
-    }
-}
 
 
 // Resolver types are now imported and used below
 
 
-export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Mutation: MutationResolvers<GraphqlContext> } */ = { // TODO: Add types back when generated
+export const coachingResolvers: { Query: QueryResolvers<GraphqlContext>, Mutation: MutationResolvers<GraphqlContext> } = {
   Query: {
     // Note: The service returns a richer config object than the GraphQL type.
-    // We map only the required fields here. // TODO: Add GqlCoachConfig type back
-    getCoachConfig: async (_parent: unknown, _args: unknown, context: GraphqlContext): Promise<any> => {
-      console.log(`Resolver: getCoachConfig called (User: ${context.userId || 'N/A'})`);
+    // We map only the required fields here.
+    getCoachConfig: async (_parent: unknown, _args: unknown, context: GraphqlContext): Promise<CoachConfig> => {
+      logger.info(`Resolver: getCoachConfig called (User: ${context.userId || 'N/A'})`);
       try {
         // Service method doesn't require userId for general config
         const fullConfig = await coachingService.getCoachConfig();
@@ -52,9 +39,10 @@ export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Muta
             // Explicitly omit other fields like providerName, modelName, analysisPrompt
         };
       } catch (error: any) {
-        console.error(`Resolver Error: Failed to get coach config:`, error);
-        // Consider using ApolloError for better client feedback
-        throw new Error(`Failed to fetch coach configuration: ${error.message}`);
+        logger.error({ err: error }, `Resolver Error: Failed to get coach config`);
+        throw new GraphQLError(`Failed to fetch coach configuration: ${error.message}`, {
+          extensions: { code: ApolloServerErrorCode.INTERNAL_SERVER_ERROR },
+        });
       }
     },
     // Removed getInChatSuggestions
@@ -63,10 +51,12 @@ export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Muta
     // Note: The service returns { response, newState, isComplete }.
     // The GraphQL type only includes { response, newState }.
     // The 'isComplete' flag might need to be added to the schema or handled client-side.
-    sendRegistrationCoachMessage: async (_parent: unknown, args: SendRegistrationMessageArgs, context: GraphqlContext): Promise<any> => { // TODO: Add GqlRegistrationCoachTurn type back
+    sendRegistrationCoachMessage: async (_parent: unknown, args: SendRegistrationMessageArgs, context: GraphqlContext): Promise<RegistrationCoachTurn> => {
       const userId = context.userId;
       if (!userId) {
-        throw new Error('Authentication required.');
+        throw new GraphQLError('Authentication required.', {
+          extensions: { code: ApolloServerErrorCode.UNAUTHENTICATED },
+        });
       }
 
       let validatedInput;
@@ -80,7 +70,7 @@ export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Muta
         });
       }
       const { message, currentState } = validatedInput;
-      console.log(`Resolver: sendRegistrationCoachMessage called for user ${userId}`);
+      logger.info(`Resolver: sendRegistrationCoachMessage called for user ${userId}`);
       try {
         // Service method expects message to be potentially null for the first turn,
         // but GraphQL schema requires String!. Client must handle sending initial message.
@@ -95,15 +85,19 @@ export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Muta
             // isComplete: result.isComplete // Omitted as it's not in the GQL type
         };
       } catch (error: any) {
-        console.error(`Resolver Error: Failed to handle registration coach message for user ${userId}:`, error);
-        throw new Error(`Failed to process coach message: ${error.message}`);
+        logger.error({ err: error }, `Resolver Error: Failed to handle registration coach message for user ${userId}`);
+        throw new GraphQLError(`Failed to process coach message: ${error.message}`, {
+          extensions: { code: ApolloServerErrorCode.INTERNAL_SERVER_ERROR },
+        });
       }
     },
 
-    requestChatFeedback: async (_parent: unknown, args: RequestChatFeedbackArgs, context: GraphqlContext): Promise<any> => { // TODO: Add GqlChatFeedback type back
+    requestChatFeedback: async (_parent: unknown, args: RequestChatFeedbackArgs, context: GraphqlContext): Promise<ChatFeedback> => {
         const userId = context.userId;
         if (!userId) {
-            throw new Error('Authentication required.');
+            throw new GraphQLError('Authentication required.', {
+              extensions: { code: ApolloServerErrorCode.UNAUTHENTICATED },
+            });
         }
 
         let validatedInput;
@@ -117,14 +111,14 @@ export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Muta
             });
          }
         const { chatId, scope, draftContent, recentMessageCount } = validatedInput;
-        console.log(`Resolver: requestChatFeedback called for user ${userId}, chat ${chatId}, scope ${scope}`);
+        logger.info(`Resolver: requestChatFeedback called for user ${userId}, chat ${chatId}, scope ${scope}`);
 
         // Manual validation removed - handled by Zod schema refine
 
         // --- Fetch actual conversation history based on scope ---
         let conversationHistory: { senderId: number; content: string; createdAt: Date }[] = []; // Correct senderId type to number
         try {
-            logger.log(`Fetching conversation history for chat ${chatId} with scope ${scope}`);
+            logger.debug(`Fetching conversation history for chat ${chatId} with scope ${scope}`);
             // Parse chatId to integer for database query
             const matchIdInt = parseInt(chatId, 10);
             if (isNaN(matchIdInt)) {
@@ -157,15 +151,17 @@ export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Muta
                     .limit(limitCount);
 
                 conversationHistory = recentMessages.reverse(); // Reverse to get chronological order
-                logger.log(`Fetched last ${conversationHistory.length} messages for chat ${chatId}`);
+                logger.debug(`Fetched last ${conversationHistory.length} messages for chat ${chatId}`);
 
             } else if (scope === 'FULL') {
                 conversationHistory = await queryBase; // Fetch all messages
-                logger.log(`Fetched all ${conversationHistory.length} messages for chat ${chatId}`);
+                logger.debug(`Fetched all ${conversationHistory.length} messages for chat ${chatId}`);
             }
         } catch (dbError: any) {
             logger.error(`Database Error: Failed to fetch messages for chat ${chatId}:`, dbError);
-            throw new Error(`Failed to retrieve conversation history: ${dbError.message}`);
+            throw new GraphQLError(`Failed to retrieve conversation history: ${dbError.message}`, {
+              extensions: { code: ApolloServerErrorCode.INTERNAL_SERVER_ERROR },
+            });
         }
         // --- End Fetch ---
 
@@ -181,8 +177,10 @@ export const coachingResolvers /*: { Query: QueryResolvers<GraphqlContext>, Muta
             // Return in the format defined by ChatFeedback type { suggestions: [String!]! }
             return { suggestions };
         } catch (error: any) {
-            console.error(`Resolver Error: Failed to get chat feedback for user ${userId}:`, error);
-            throw new Error(`Failed to get chat feedback: ${error.message}`);
+            logger.error({ err: error }, `Resolver Error: Failed to get chat feedback for user ${userId}`);
+            throw new GraphQLError(`Failed to get chat feedback: ${error.message}`, {
+              extensions: { code: ApolloServerErrorCode.INTERNAL_SERVER_ERROR },
+            });
         }
     },
   },

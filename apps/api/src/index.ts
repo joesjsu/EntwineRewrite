@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express'; // Import Request, Response, NextFunction
 import http from 'http';
 import fs from 'fs'; // Import fs for file reading
 import path from 'path'; // Import path for resolving file paths
 import cors from 'cors';
+import rateLimit, { Options as RateLimitOptions } from 'express-rate-limit'; // Import rate limiter and Options type
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
@@ -27,6 +28,11 @@ import adminResolvers from './graphql/resolvers/admin.resolver'; // Import admin
 import { chatResolvers } from './graphql/resolvers/chat.resolver'; // Import chat resolver
 import type { ApiContext } from '@/types/context';
 import { authDirectiveTransformer } from './graphql/directives/auth.directive';
+
+// --- Define and Export App and Server Instances ---
+const app: express.Express = express(); // No longer exported
+const httpServer = http.createServer(app); // No longer exported
+
 // --- Load GraphQL Schema Files ---
 // Reverting to __dirname as import.meta.url causes issues with build/runtime context
 const schemaPath = path.resolve(__dirname, './graphql/schema.graphql');
@@ -84,27 +90,28 @@ interface AuthenticatedSocket extends Socket {
 }
 
 // --- Start Server Function ---
+// Now uses the exported app and httpServer instances
 async function startServer() {
-  const app = express();
-  // httpServer needs to be defined here
-  const httpServer = http.createServer(app);
+  // Check for JWT_SECRET environment variable
+  if (!process.env.JWT_SECRET) {
+    logger.warn('*** JWT_SECRET environment variable is NOT set. Socket.IO authentication will fail. ***');
+  } else {
+    logger.info('JWT_SECRET environment variable is set.');
+  }
 
   // Setup WebSocket server for subscriptions (enable later)
   // const wsServer = new WebSocketServer({ server: httpServer, path: '/graphql' });
   // const serverCleanup = useServer({ schema: makeExecutableSchema({ typeDefs, resolvers }) }, wsServer); // Need makeExecutableSchema for WS
 
   // --- Create Executable Schema and Apply Directives ---
-  // --- Create Executable Schema and Apply Directives ---
   let schema = makeExecutableSchema({ typeDefs, resolvers });
   schema = authDirectiveTransformer(schema); // Apply the auth directive transformer
-
-  // Setup Apollo Server with the transformed schema
 
   // Setup Apollo Server with the transformed schema
   const server = new ApolloServer<ApiContext>({ // Use imported ApiContext
     schema, // Use the transformed schema
     plugins: [
-      ApolloServerPluginDrainHttpServer({ httpServer }),
+      ApolloServerPluginDrainHttpServer({ httpServer }), // Use exported httpServer
       // Proper shutdown for WebSocket server (enable later)
       // {
       //   async serverWillStart() {
@@ -119,9 +126,9 @@ async function startServer() {
   });
 
   // --- Setup Socket.IO Server ---
-  const io = new SocketIOServer(httpServer, {
+  const io = new SocketIOServer(httpServer, { // Use exported httpServer
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173", // Allow client origin
+      origin: process.env.CLIENT_URL || "http://localhost:3000", // Allow client origin (frontend)
       methods: ["GET", "POST"],
       credentials: true
     }
@@ -130,25 +137,35 @@ async function startServer() {
   // Socket.IO Authentication Middleware
   io.use((socket: AuthenticatedSocket, next) => {
     const token = socket.handshake.auth.token;
+    logger.info('[Socket Auth] Attempting authentication...'); // Added log
+
     if (!token) {
-      console.error('Socket Auth Error: No token provided.');
+      logger.error('[Socket Auth Error] No token provided in handshake.auth.'); // Enhanced log
       return next(new Error('Authentication error: No token provided.'));
     }
+    logger.info('[Socket Auth] Token received:', token ? `${token.substring(0, 10)}...` : 'null'); // Added log (truncated token)
+    logger.debug('[Socket Auth Debug] Token received:', token ? `${token.substring(0, 10)}...` : 'null');
 
-    const secret = process.env.JWT_SECRET;
+    // Use JWT_ACCESS_SECRET to match the signing secret in AuthService
+    const secret = process.env.JWT_ACCESS_SECRET;
+    logger.info('[Socket Auth] Using JWT_ACCESS_SECRET:', secret ? '******' : 'NOT SET!'); // Corrected log message
+    logger.debug('[Socket Auth Debug] Using JWT_ACCESS_SECRET:', process.env.JWT_ACCESS_SECRET ? 'Secret exists' : 'No secret');
+    logger.debug('[Socket Auth Debug] Using JWT_SECRET:', process.env.JWT_SECRET ? 'Secret exists' : 'No secret');
+
     if (!secret) {
-       console.error('Socket Auth Error: JWT_SECRET not configured on server.');
-       return next(new Error('Server configuration error.'));
+       logger.error('[Socket Auth Error] JWT_ACCESS_SECRET environment variable is not configured on the server.'); // Corrected log message
+       return next(new Error('Server configuration error: Missing JWT access secret.')); // More specific error
     }
 
     jwt.verify(token, secret, (err: any, decoded: any) => {
       if (err) {
-        console.error('Socket Auth Error: Invalid token.', err.message);
-        return next(new Error('Authentication error: Invalid token.'));
+        // Log the specific error from jwt.verify
+        logger.error('[Socket Auth Error] Token verification failed:', { errorName: err.name, errorMessage: err.message }); // Enhanced log
+        return next(new Error(`Authentication error: ${err.message}`)); // Pass specific error message
       }
       // TODO: Optionally fetch user from DB to ensure they still exist/are active
       socket.user = { id: decoded.sub }; // Attach user ID to the socket object
-      console.log(`Socket authenticated for user: ${socket.user.id}`);
+      logger.info(`[Socket Auth Success] Token verified for user: ${socket.user.id}`); // Enhanced log
       next();
     });
   });
@@ -156,32 +173,32 @@ async function startServer() {
 
   // Socket.IO Connection Handler
   io.on('connection', (socket: AuthenticatedSocket) => {
-    console.log(`User connected via Socket.IO: ${socket.user?.id} (Socket ID: ${socket.id})`);
+    logger.info(`User connected via Socket.IO: ${socket.user?.id} (Socket ID: ${socket.id})`);
 
     // --- Join Rooms (Example) ---
     // User should join their own room to receive direct messages/notifications
     if (socket.user?.id) {
        socket.join(socket.user.id);
-       console.log(`User ${socket.user.id} joined room ${socket.user.id}`);
+       logger.info(`User ${socket.user.id} joined room ${socket.user.id}`);
     }
     // Could also join rooms based on matches, groups, etc.
 
 
     // --- Event Listeners ---
     socket.on('disconnect', (reason) => {
-      console.log(`User disconnected: ${socket.user?.id} (Socket ID: ${socket.id}). Reason: ${reason}`);
+      logger.info(`User disconnected: ${socket.user?.id} (Socket ID: ${socket.id}). Reason: ${reason}`);
       // Handle cleanup if needed
     });
 
     socket.on('error', (error) => {
-       console.error(`Socket Error for user ${socket.user?.id} (Socket ID: ${socket.id}):`, error);
+       logger.error(`Socket Error for user ${socket.user?.id} (Socket ID: ${socket.id}):`, error);
     });
 
     // Example: Chat message listener
     socket.on('chat message', async (data: { recipientId: string; message: string }) => { // Add async
        const senderIdString = socket.user?.id;
        const { recipientId: recipientIdString, message } = data;
-       console.log(`Received chat message from ${senderIdString} to ${recipientIdString}: ${message}`);
+       logger.info(`Received chat message from ${senderIdString} to ${recipientIdString}: ${message}`);
        if (senderIdString) {
            try {
                // Convert IDs to numbers
@@ -189,7 +206,7 @@ async function startServer() {
                const recipientId = parseInt(recipientIdString, 10);
 
                if (isNaN(senderId) || isNaN(recipientId)) {
-                   console.error(`Chat message error: Invalid user IDs provided. Sender: '${senderIdString}', Recipient: '${recipientIdString}'.`);
+                   logger.error(`Chat message error: Invalid user IDs provided. Sender: '${senderIdString}', Recipient: '${recipientIdString}'.`);
                    socket.emit('message error', { error: 'Invalid user ID format.' });
                    return;
                }
@@ -204,7 +221,7 @@ async function startServer() {
                });
 
                if (!match) {
-                   console.error(`Chat message error: No active match found between ${senderId} and ${recipientId}.`);
+                   logger.error(`Chat message error: No active match found between ${senderId} and ${recipientId}.`);
                    socket.emit('message error', { error: 'Cannot send message: No active match found.' });
                    return; // Stop processing if no match
                }
@@ -223,7 +240,7 @@ async function startServer() {
                if (!savedMessage) {
                    throw new Error('Failed to insert message or retrieve inserted data.');
                }
-               console.log(`Message saved to DB: ID ${savedMessage.id}`);
+               logger.info(`Message saved to DB: ID ${savedMessage.id}`);
 
 
                // 4. Send Push Notification
@@ -261,27 +278,27 @@ async function startServer() {
 
 
            } catch (error) {
-               console.error(`Failed to save or emit message from ${senderIdString} to ${recipientIdString}:`, error);
+               logger.error(`Failed to save or emit message from ${senderIdString} to ${recipientIdString}:`, error);
                // Optional: Emit an error back to the sender
                socket.emit('message error', { error: 'Failed to send message. Please try again.' });
            }
        } else {
-            console.error('Chat message received but sender ID string is missing on socket.');
+            logger.error('Chat message received but sender ID string is missing on socket.');
             // Cannot process without sender ID string
        }
     });
 
     // Add more event listeners as needed (e.g., typing indicators, read receipts)
 
-    // --- Typing Indicators --- 
+    // --- Typing Indicators ---
     socket.on('start typing', (data: { recipientId: string; matchId: number }) => {
       const senderId = socket.user?.id;
       if (senderId && data.recipientId) {
         // Emit to the recipient's room that the sender is typing
         // logger.debug(`User ${senderId} started typing to ${data.recipientId} in match ${data.matchId}`);
-        io.to(data.recipientId).emit('user typing', { 
+        io.to(data.recipientId).emit('user typing', {
           senderId: senderId,
-          matchId: data.matchId 
+          matchId: data.matchId
         });
       }
     });
@@ -291,14 +308,14 @@ async function startServer() {
       if (senderId && data.recipientId) {
         // Emit to the recipient's room that the sender stopped typing
         // logger.debug(`User ${senderId} stopped typing to ${data.recipientId} in match ${data.matchId}`);
-        io.to(data.recipientId).emit('user stopped typing', { 
+        io.to(data.recipientId).emit('user stopped typing', {
           senderId: senderId,
-          matchId: data.matchId 
+          matchId: data.matchId
         });
       }
     });
 
-    // --- Read Receipts --- 
+    // --- Read Receipts ---
     socket.on('message read', async (data: { messageId: number; matchId: number; senderId: string }) => {
       const readerId = socket.user?.id;
       const { messageId, matchId, senderId } = data;
@@ -352,7 +369,51 @@ async function startServer() {
   await server.start();
 
   // --- Apply Middleware ---
-  app.use(cors()); // Configure CORS properly later
+
+  // General Rate Limiter (Apply to all requests first)
+  const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 200, // Allow more general requests (adjust as needed)
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many general requests from this IP, please try again after 15 minutes',
+    handler: (req: Request, res: Response, _next: NextFunction, options: RateLimitOptions) => { // Add explicit types
+        logger.warn(`General rate limit exceeded for IP ${req.ip}. Path: ${req.path}. Message: ${options.message}`);
+        res.status(options.statusCode).send(options.message);
+    },
+  });
+  app.use(generalLimiter); // Apply to all requests
+
+  // Stricter Rate Limiter specifically for GraphQL endpoint (including auth)
+  const graphqlLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // Limit GraphQL requests more strictly (adjust as needed)
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many GraphQL requests from this IP, please try again after 15 minutes',
+    handler: (req: Request, res: Response, _next: NextFunction, options: RateLimitOptions) => { // Add explicit types
+        // Check if it's likely an auth attempt based on operation name (simple check)
+        const operationName = req.body?.operationName;
+        const isAuthOperation = operationName === 'Login' || operationName === 'Register' || operationName === 'RefreshToken';
+        const logContext = isAuthOperation ? 'Auth-related GraphQL' : 'GraphQL';
+        logger.warn(`${logContext} rate limit exceeded for IP ${req.ip}. Operation: ${operationName || 'N/A'}. Message: ${options.message}`);
+        res.status(options.statusCode).send(options.message);
+    },
+    skip: (req: Request, _res: Response) => { // Add explicit types
+        // Example: Potentially skip introspection queries from rate limiting in development
+        if (process.env.NODE_ENV !== 'production' && req.body?.operationName === 'IntrospectionQuery') {
+          return true;
+        }
+        return false;
+      },
+  });
+  // Apply the stricter limiter ONLY to the /graphql path, BEFORE other /graphql middleware
+  app.use('/graphql', graphqlLimiter);
+  // Use the exported app instance
+  app.use(cors({
+    origin: process.env.CLIENT_URL || "http://localhost:3000", // Allow client origin
+    credentials: true // Allow cookies/auth headers
+  }));
   app.use(express.json());
   app.use(passport.initialize()); // Initialize passport
 
@@ -365,7 +426,7 @@ async function startServer() {
         return new Promise((resolve) => {
           passport.authenticate('jwt', { session: false }, (err: any, user: any, _info: any) => {
             if (err) {
-              console.error('Authentication error:', err);
+              logger.error('Authentication error:', err);
               // Resolve without user on auth error
               resolve({ authService });
               return;
@@ -382,13 +443,29 @@ async function startServer() {
   );
 
   // --- Start Listening ---
+  // Use the exported httpServer instance
   const PORT = process.env.PORT || 4001;
   await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve));
-  console.log(`🚀 Server ready at http://localhost:${PORT}/graphql`);
+  logger.info(`🚀 Server ready at http://localhost:${PORT}/graphql`);
+
+  // Return instances if needed by the caller (though not strictly necessary for basic start)
+  // Return only instances not accessible via module scope
+  return { io, apolloServer: server };
 }
 
-// --- Run Server ---
-startServer().catch((error) => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
-});
+// Export an async function to initialize and return the app
+export async function initializeApp() {
+  // Call startServer to perform all setup
+  await startServer();
+  // Return the configured app and httpServer (accessible via module scope)
+  return { app, httpServer };
+}
+
+// Conditional start block removed to prevent auto-start on import
+// if (require.main === module) {
+//     startServer().catch((error) => {
+//         console.error('Failed to start server:', error);
+//         process.exit(1);
+//     });
+// }
+// export { startServer };

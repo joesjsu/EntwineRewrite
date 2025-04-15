@@ -2,6 +2,8 @@
 module.exports = {
   preset: 'ts-jest', // Revert to standard ts-jest preset as noted in plan
   testEnvironment: 'node',
+  globalSetup: './src/test-utils/jest.globalSetup.ts',
+  globalTeardown: './src/test-utils/jest.globalTeardown.ts',
   // extensionsToTreatAsEsm: ['.ts'], // Remove this when not using ESM preset
   // Automatically clear mock calls, instances, contexts and results before every test
   clearMocks: true,
@@ -22,9 +24,9 @@ module.exports = {
   // testPathIgnorePatterns: ['/node_modules/', '/dist/'],
 
   // Module name mapper (useful if using path aliases in tsconfig.json)
-  // moduleNameMapper: {
-  //   '^@/(.*)$': '<rootDir>/src/$1',
-  // },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
 
   // Setup files to run before each test file (e.g., for environment setup)
   // setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
@@ -43,8 +45,5 @@ module.exports = {
     // If using ESM, might need to adjust transformIgnorePatterns if dependencies need transforming
     // transformIgnorePatterns: ['/node_modules/(?!some-esm-dependency)'],
   },
-  // moduleNameMapper: { // Remove ESM-specific mapper
-  //     '^(\\.{1,2}/.*)\\.js$': '$1',
-  // },
   // resolver: './jest.resolver.cjs', // Keep custom resolver removed for now
 };

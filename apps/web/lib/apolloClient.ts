@@ -6,7 +6,7 @@ import { authEvents, AUTH_EVENTS } from './authEvents'; // Import the event emit
 // Define key for localStorage
 const ACCESS_TOKEN_KEY = 'entwine_access_token';
 // Define API URL (replace with environment variable later)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/graphql'; // Default for local dev
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/graphql'; // Default for local dev (Corrected Port)
 
 const httpLink = createHttpLink({
   uri: API_URL,

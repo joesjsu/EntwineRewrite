@@ -23,8 +23,10 @@ export type Scalars = {
 export type AdminUser = {
   __typename?: 'AdminUser';
   createdAt: Scalars['DateTime']['output'];
+  email?: Maybe<Scalars['String']['output']>;
   firstName?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  isActive: Scalars['Boolean']['output'];
   lastName?: Maybe<Scalars['String']['output']>;
   profileComplete: Scalars['Boolean']['output'];
   role: UserRole;
@@ -49,6 +51,7 @@ export type AuthPayload = {
   __typename?: 'AuthPayload';
   accessToken: Scalars['String']['output'];
   refreshToken?: Maybe<Scalars['String']['output']>;
+  user?: Maybe<User>;
 };
 
 export type AvailableAiProvider = {
@@ -77,6 +80,17 @@ export type CompatibilityScore = {
   overall: Scalars['Float']['output'];
 };
 
+/** Payload returned after successfully impersonating a user. */
+export type ImpersonationPayload = {
+  __typename?: 'ImpersonationPayload';
+  /** The access token to use for impersonation. */
+  accessToken: Scalars['String']['output'];
+  /** The refresh token associated with the impersonation session. */
+  refreshToken: Scalars['String']['output'];
+  /** The user object of the impersonated user. */
+  user: User;
+};
+
 export type LoginInput = {
   password: Scalars['String']['input'];
   phoneNumber: Scalars['String']['input'];
@@ -95,7 +109,11 @@ export type Message = {
 export type Mutation = {
   __typename?: 'Mutation';
   _empty?: Maybe<Scalars['Boolean']['output']>;
+  /** Allows an admin to impersonate another user. Returns tokens for the target user. */
+  impersonateUser: ImpersonationPayload;
   login: AuthPayload;
+  /** Records a swipe action (like/dislike) on another user. */
+  recordSwipe: RecordSwipePayload;
   refreshToken: AuthPayload;
   register: AuthPayload;
   /** Registers a device token for the authenticated user to receive push notifications. */
@@ -104,14 +122,26 @@ export type Mutation = {
   requestChatFeedback: ChatFeedback;
   /** Sends a user's message during the registration coaching process and gets the coach's reply. */
   sendRegistrationCoachMessage: RegistrationCoachTurn;
+  setAdminUserStatus?: Maybe<AdminUser>;
   /** Unregisters a specific device token for the authenticated user. */
   unregisterDeviceToken?: Maybe<Scalars['Boolean']['output']>;
+  updateAdminUser?: Maybe<AdminUser>;
   updateAiFeatureConfig?: Maybe<AiFeatureConfig>;
+};
+
+
+export type MutationImpersonateUserArgs = {
+  userId: Scalars['ID']['input'];
 };
 
 
 export type MutationLoginArgs = {
   input: LoginInput;
+};
+
+
+export type MutationRecordSwipeArgs = {
+  input: RecordSwipeInput;
 };
 
 
@@ -141,8 +171,18 @@ export type MutationSendRegistrationCoachMessageArgs = {
 };
 
 
+export type MutationSetAdminUserStatusArgs = {
+  input: SetAdminUserStatusInput;
+};
+
+
 export type MutationUnregisterDeviceTokenArgs = {
   token: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateAdminUserArgs = {
+  input: UpdateAdminUserInput;
 };
 
 
@@ -202,7 +242,19 @@ export type QueryGetPotentialMatchesArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
+export type RecordSwipeInput = {
+  action: SwipeAction;
+  swipedUserId: Scalars['ID']['input'];
+};
+
+export type RecordSwipePayload = {
+  __typename?: 'RecordSwipePayload';
+  matchCreated?: Maybe<Scalars['Boolean']['output']>;
+  success: Scalars['Boolean']['output'];
+};
+
 export type RegisterInput = {
+  email: Scalars['String']['input'];
   firstName?: InputMaybe<Scalars['String']['input']>;
   lastName?: InputMaybe<Scalars['String']['input']>;
   password: Scalars['String']['input'];
@@ -225,6 +277,23 @@ export type RequestChatFeedbackInput = {
 export type SendRegistrationMessageInput = {
   currentState: Scalars['JSON']['input'];
   message: Scalars['String']['input'];
+};
+
+export type SetAdminUserStatusInput = {
+  isActive: Scalars['Boolean']['input'];
+  userId: Scalars['ID']['input'];
+};
+
+export type SwipeAction =
+  | 'DISLIKE'
+  | 'LIKE';
+
+export type UpdateAdminUserInput = {
+  firstName?: InputMaybe<Scalars['String']['input']>;
+  lastName?: InputMaybe<Scalars['String']['input']>;
+  profileComplete?: InputMaybe<Scalars['Boolean']['input']>;
+  role?: InputMaybe<UserRole>;
+  userId: Scalars['ID']['input'];
 };
 
 export type UpdateAiFeatureConfigInput = {
@@ -338,6 +407,7 @@ export type ResolversTypes = ResolversObject<{
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
+  ImpersonationPayload: ResolverTypeWrapper<ImpersonationPayload>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   Json: ResolverTypeWrapper<Scalars['Json']['output']>;
@@ -347,11 +417,16 @@ export type ResolversTypes = ResolversObject<{
   Platform: Platform;
   PotentialMatch: ResolverTypeWrapper<PotentialMatch>;
   Query: ResolverTypeWrapper<{}>;
+  RecordSwipeInput: RecordSwipeInput;
+  RecordSwipePayload: ResolverTypeWrapper<RecordSwipePayload>;
   RegisterInput: RegisterInput;
   RegistrationCoachTurn: ResolverTypeWrapper<RegistrationCoachTurn>;
   RequestChatFeedbackInput: RequestChatFeedbackInput;
   SendRegistrationMessageInput: SendRegistrationMessageInput;
+  SetAdminUserStatusInput: SetAdminUserStatusInput;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
+  SwipeAction: SwipeAction;
+  UpdateAdminUserInput: UpdateAdminUserInput;
   UpdateAiFeatureConfigInput: UpdateAiFeatureConfigInput;
   User: ResolverTypeWrapper<User>;
   UserRole: UserRole;
@@ -371,6 +446,7 @@ export type ResolversParentTypes = ResolversObject<{
   DateTime: Scalars['DateTime']['output'];
   Float: Scalars['Float']['output'];
   ID: Scalars['ID']['output'];
+  ImpersonationPayload: ImpersonationPayload;
   Int: Scalars['Int']['output'];
   JSON: Scalars['JSON']['output'];
   Json: Scalars['Json']['output'];
@@ -379,11 +455,15 @@ export type ResolversParentTypes = ResolversObject<{
   Mutation: {};
   PotentialMatch: PotentialMatch;
   Query: {};
+  RecordSwipeInput: RecordSwipeInput;
+  RecordSwipePayload: RecordSwipePayload;
   RegisterInput: RegisterInput;
   RegistrationCoachTurn: RegistrationCoachTurn;
   RequestChatFeedbackInput: RequestChatFeedbackInput;
   SendRegistrationMessageInput: SendRegistrationMessageInput;
+  SetAdminUserStatusInput: SetAdminUserStatusInput;
   String: Scalars['String']['output'];
+  UpdateAdminUserInput: UpdateAdminUserInput;
   UpdateAiFeatureConfigInput: UpdateAiFeatureConfigInput;
   User: User;
 }>;
@@ -396,8 +476,10 @@ export type AuthDirectiveResolver<Result, Parent, ContextType = ApiContext, Args
 
 export type AdminUserResolvers<ContextType = ApiContext, ParentType extends ResolversParentTypes['AdminUser'] = ResolversParentTypes['AdminUser']> = ResolversObject<{
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  email?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   firstName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  isActive?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   lastName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   profileComplete?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   role?: Resolver<ResolversTypes['UserRole'], ParentType, ContextType>;
@@ -422,6 +504,7 @@ export type AiFeatureConfigResolvers<ContextType = ApiContext, ParentType extend
 export type AuthPayloadResolvers<ContextType = ApiContext, ParentType extends ResolversParentTypes['AuthPayload'] = ResolversParentTypes['AuthPayload']> = ResolversObject<{
   accessToken?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   refreshToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  user?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
@@ -450,6 +533,13 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'DateTime';
 }
 
+export type ImpersonationPayloadResolvers<ContextType = ApiContext, ParentType extends ResolversParentTypes['ImpersonationPayload'] = ResolversParentTypes['ImpersonationPayload']> = ResolversObject<{
+  accessToken?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  refreshToken?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  user?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
 export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
   name: 'JSON';
 }
@@ -470,13 +560,17 @@ export type MessageResolvers<ContextType = ApiContext, ParentType extends Resolv
 
 export type MutationResolvers<ContextType = ApiContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = ResolversObject<{
   _empty?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  impersonateUser?: Resolver<ResolversTypes['ImpersonationPayload'], ParentType, ContextType, RequireFields<MutationImpersonateUserArgs, 'userId'>>;
   login?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
+  recordSwipe?: Resolver<ResolversTypes['RecordSwipePayload'], ParentType, ContextType, RequireFields<MutationRecordSwipeArgs, 'input'>>;
   refreshToken?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationRefreshTokenArgs, 'token'>>;
   register?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationRegisterArgs, 'input'>>;
   registerDeviceToken?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationRegisterDeviceTokenArgs, 'platform' | 'token'>>;
   requestChatFeedback?: Resolver<ResolversTypes['ChatFeedback'], ParentType, ContextType, RequireFields<MutationRequestChatFeedbackArgs, 'input'>>;
   sendRegistrationCoachMessage?: Resolver<ResolversTypes['RegistrationCoachTurn'], ParentType, ContextType, RequireFields<MutationSendRegistrationCoachMessageArgs, 'input'>>;
+  setAdminUserStatus?: Resolver<Maybe<ResolversTypes['AdminUser']>, ParentType, ContextType, RequireFields<MutationSetAdminUserStatusArgs, 'input'>>;
   unregisterDeviceToken?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUnregisterDeviceTokenArgs, 'token'>>;
+  updateAdminUser?: Resolver<Maybe<ResolversTypes['AdminUser']>, ParentType, ContextType, RequireFields<MutationUpdateAdminUserArgs, 'input'>>;
   updateAiFeatureConfig?: Resolver<Maybe<ResolversTypes['AiFeatureConfig']>, ParentType, ContextType, RequireFields<MutationUpdateAiFeatureConfigArgs, 'input'>>;
 }>;
 
@@ -497,6 +591,12 @@ export type QueryResolvers<ContextType = ApiContext, ParentType extends Resolver
   getPotentialMatches?: Resolver<Array<ResolversTypes['PotentialMatch']>, ParentType, ContextType, RequireFields<QueryGetPotentialMatchesArgs, 'limit'>>;
   hello?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   me?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
+}>;
+
+export type RecordSwipePayloadResolvers<ContextType = ApiContext, ParentType extends ResolversParentTypes['RecordSwipePayload'] = ResolversParentTypes['RecordSwipePayload']> = ResolversObject<{
+  matchCreated?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
 export type RegistrationCoachTurnResolvers<ContextType = ApiContext, ParentType extends ResolversParentTypes['RegistrationCoachTurn'] = ResolversParentTypes['RegistrationCoachTurn']> = ResolversObject<{
@@ -531,12 +631,14 @@ export type Resolvers<ContextType = ApiContext> = ResolversObject<{
   CoachConfig?: CoachConfigResolvers<ContextType>;
   CompatibilityScore?: CompatibilityScoreResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
+  ImpersonationPayload?: ImpersonationPayloadResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   Json?: GraphQLScalarType;
   Message?: MessageResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   PotentialMatch?: PotentialMatchResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
+  RecordSwipePayload?: RecordSwipePayloadResolvers<ContextType>;
   RegistrationCoachTurn?: RegistrationCoachTurnResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
 }>;

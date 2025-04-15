@@ -12,12 +12,16 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({ isTyping, userName })
     return null; // Don't render anything if no one is typing
   }
 
-  const typingText = userName ? `${userName} is typing...` : 'Typing...';
+  const typingText = userName ? `${userName} is typing` : 'Typing';
 
   return (
-    <div style={{ height: '20px', padding: '0 10px', fontStyle: 'italic', color: '#888', fontSize: '0.9em' }}>
-      {typingText}
-      {/* Optional: Add animated dots or other visual cues */}
+    <div className="h-6 px-4 py-1 text-sm text-purple-500 font-medium flex items-center">
+      <span>{typingText}</span>
+      <span className="ml-1 flex">
+        <span className="animate-bounce mx-0.5 delay-0">.</span>
+        <span className="animate-bounce mx-0.5 delay-150">.</span>
+        <span className="animate-bounce mx-0.5 delay-300">.</span>
+      </span>
     </div>
   );
 };

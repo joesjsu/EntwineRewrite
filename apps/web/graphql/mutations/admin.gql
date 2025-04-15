@@ -1,11 +1,22 @@
 # apps/web/graphql/mutations/admin.gql
 
-# Mutation to update a specific AI feature configuration
-mutation UpdateAiFeatureConfig($input: UpdateAiFeatureConfigInput!) {
-  updateAiFeatureConfig(input: $input) {
-    featureKey
-    providerName
-    modelName
+mutation SetAdminUserStatus($input: SetAdminUserStatusInput!) {
+  setAdminUserStatus(input: $input) {
+    id
+    isActive
+    # Include other fields if needed upon return
+  }
+}
+
+mutation UpdateAdminUser($input: UpdateAdminUserInput!) {
+  updateAdminUser(input: $input) {
+    id
+    firstName
+    lastName
+    email
+    role
+    profileComplete
     updatedAt
+    # Include other fields if needed upon return
   }
 }

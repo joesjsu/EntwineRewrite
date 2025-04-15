@@ -6,6 +6,7 @@ import { GoogleProvider } from './google.provider';
 // Import other providers like OpenAIProvider, AnthropicProvider when implemented
 // import { OpenAIProvider } from './openai.provider';
 // import { AnthropicProvider } from './anthropic.provider';
+import { logger } from '../config/logger'; // Import structured logger
 
 // Simple cache for provider instances (can be replaced with Redis later)
 export const providerCache = new Map<string, AIProvider>(); // Export for testing
@@ -37,18 +38,20 @@ export class AIService {
     });
 
     if (!config) {
-      throw new Error(`AI configuration not found for feature key: ${featureKey}`);
+      // Consider a custom NotFoundError or ConfigurationError here
+      throw new Error(`Configuration Error: AI configuration not found for feature key '${featureKey}'.`);
     }
 
     if (!config.isActive) {
-      throw new Error(`AI configuration is inactive for feature key: ${featureKey}`);
+      // Consider a custom ConfigurationError here
+      throw new Error(`Configuration Error: AI configuration is inactive for feature key '${featureKey}'.`);
     }
 
     const { providerName, modelName } = config; // modelName isn't used for instantiation yet, but needed by provider methods
 
     // Check cache based on provider name (avoids re-instantiating provider for same API key)
     if (providerCache.has(providerName)) {
-        console.log(`Using cached AI provider instance for: ${providerName}`); // TODO: Replace with logger
+        logger.debug(`Using cached AI provider instance for: ${providerName}`);
         return providerCache.get(providerName)!;
     }
 
@@ -66,12 +69,13 @@ export class AIService {
       //   providerInstance = new AnthropicProvider(); // Needs implementation
       //   break;
       default:
-        throw new Error(`Unsupported AI provider specified: ${providerName} for feature: ${featureKey}`);
+        // Consider a custom ConfigurationError or UnsupportedOperationError here
+        throw new Error(`Configuration Error: Unsupported AI provider '${providerName}' specified for feature '${featureKey}'.`);
     }
 
     // Cache the instantiated provider
     providerCache.set(providerName, providerInstance);
-    console.log(`Instantiated and cached AI provider instance for: ${providerName}`); // TODO: Replace with logger
+    logger.info(`Instantiated and cached AI provider instance for: ${providerName}`);
 
 
     return providerInstance;
@@ -84,7 +88,8 @@ export class AIService {
      });
 
      if (!config || !config.isActive) {
-       throw new Error(`Active AI configuration not found for feature key: ${featureKey}`);
+       // Consider a custom NotFoundError or ConfigurationError here
+       throw new Error(`Configuration Error: Active AI configuration not found for feature key '${featureKey}'.`);
      }
      return config.modelName;
   }

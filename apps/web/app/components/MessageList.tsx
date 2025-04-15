@@ -27,47 +27,53 @@ const MessageList: React.FC<MessageListProps> = ({ messages, currentUserId }) =>
   }, [messages]); // Dependency array includes messages
 
   return (
-    <div style={{ flexGrow: 1, overflowY: 'auto', border: '1px solid #eee', marginBottom: '10px', padding: '10px' }}> {/* Changed height to flexGrow */}
+    <div className="flex-grow overflow-y-auto bg-white rounded-lg border border-purple-100 mb-3 p-4">
       {messages.length === 0 ? (
-        <p>No messages yet. Start the conversation!</p>
+        <p className="text-center text-gray-500 py-8">No messages yet. Start the conversation!</p>
       ) : (
         messages.map((msg) => {
           const isCurrentUser = msg.senderId === currentUserId;
-          const messageAlignment = isCurrentUser ? 'flex-end' : 'flex-start';
-          const messageBackground = isCurrentUser ? '#DCF8C6' : '#FFFFFF'; // Simple styling differentiation
-
+          
           return (
             <div
               key={msg.id}
-              style={{
-                display: 'flex',
-                justifyContent: messageAlignment,
-                marginBottom: '8px',
-              }}
+              className={`flex mb-3 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                style={{
-                  maxWidth: '70%',
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  backgroundColor: messageBackground,
-                  border: '1px solid #ddd',
-                  wordBreak: 'break-word', // Prevent long words from overflowing
-                }}
+                className={`max-w-[70%] px-4 py-3 rounded-2xl break-words ${
+                  isCurrentUser
+                    ? 'bg-purple-600 text-white rounded-tr-none'
+                    : 'bg-gray-100 text-gray-800 rounded-tl-none'
+                }`}
               >
-                <p style={{ margin: 0, fontSize: '0.9em' }}>{msg.text}</p>
-                <span style={{ fontSize: '0.7em', color: '#888', display: 'block', textAlign: 'right', marginTop: '4px' }}>
-                  {/* Format createdAt nicely */}
+                <p className="m-0 text-sm">{msg.text}</p>
+                <span className={`text-xs block text-right mt-1 ${
+                  isCurrentUser ? 'text-purple-200' : 'text-gray-500'
+                }`}>
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {/* Add read indicator if applicable */}
-                  {isCurrentUser && msg.readAt && ' (Read)'}
+                  {isCurrentUser && msg.readAt && (
+                    <span className="ml-1 inline-flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
           );
         })
       )}
-      {/* Empty div at the end to act as a scroll target */}
       <div ref={messagesEndRef} />
     </div>
   );

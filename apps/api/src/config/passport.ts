@@ -2,7 +2,8 @@ import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import { db, users } from '../db'; // Import db and users table
 import { eq } from '@entwine-rewrite/shared'; // Import eq from shared package
-
+import { logger } from './logger'; // Import structured logger
+ 
 // Load JWT secret from environment variables (ensure this is set!)
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'insecure-default-access-secret';
 
@@ -41,7 +42,7 @@ passport.use(
         return done(null, false);
       }
     } catch (error) {
-      console.error('Error in JWT strategy:', error);
+      logger.error('Error in JWT strategy:', error); // Pass the full error object
       return done(error, false);
     }
   })

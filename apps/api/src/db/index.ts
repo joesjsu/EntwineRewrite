@@ -7,11 +7,16 @@ import path from 'path';
 // Load .env file from the monorepo root (adjust path as needed)
 dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
-// Prioritize DATABASE_URL_DEV if available, otherwise fall back to DATABASE_URL
-const connectionString = process.env.DATABASE_URL_DEV || process.env.DATABASE_URL;
+// Prioritize TEST_DATABASE_URL (for tests), then DATABASE_URL_DEV, then DATABASE_URL
+const connectionString =
+  process.env.TEST_DATABASE_URL ||
+  process.env.DATABASE_URL_DEV ||
+  process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error('DATABASE_URL or DATABASE_URL_DEV environment variable is not set.');
+  throw new Error(
+    'TEST_DATABASE_URL, DATABASE_URL_DEV, or DATABASE_URL environment variable is not set.',
+  );
 }
 
 // For migrations (uses the full connection string)
