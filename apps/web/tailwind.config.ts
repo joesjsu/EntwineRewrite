@@ -9,65 +9,90 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Custom purple color palette (Keep existing if needed, or replace if the CSS vars cover it)
+        /* Richer primary purple and expanded palette */
         purple: {
           50: "#f5f3ff",
           100: "#ede9fe",
           200: "#ddd6fe",
           300: "#c4b5fd",
           400: "#a78bfa",
-          500: "#8b5cf6", // Corresponds to --primary in light mode
-          600: "#7c3aed", // Corresponds to --primary in dark mode? Check globals.css
-          700: "#6d28d9",
-          800: "#5b21b6",
-          900: "#4c1d95",
-          950: "#2e1065",
+          500: "#7c3aed", // Updated to match new --primary
+          600: "#6d28d9",
+          700: "#5b21b6",
+          800: "#4c1d95",
+          900: "#2e1065",
         },
-        // Added Accent & Functional Colors (Referencing CSS Variables)
+        /* New accent colors */
         'accent-purple': 'var(--color-accent-purple)',
         'accent-pink': 'var(--color-accent-pink)',
+        'accent-coral': 'var(--color-accent-coral)',
+        'accent-teal': 'var(--color-accent-teal)',
         success: 'var(--color-success)',
         warning: 'var(--color-warning)',
         info: 'var(--color-info)',
-        // Shadcn UI colors (Referencing CSS Variables for consistency)
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        /* Expanded neutrals */
+        neutral: {
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",
+        },
+        /* Shadcn UI colors (Referencing CSS Variables for consistency) */
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
         },
       },
       borderRadius: {
-        lg: "0.625rem",
-        md: "calc(0.625rem - 2px)",
-        sm: "calc(0.625rem - 4px)",
+        lg: "0.875rem",
+        md: "calc(0.875rem - 2px)",
+        sm: "calc(0.875rem - 4px)",
+      },
+      boxShadow: {
+        xs: "var(--shadow-xs)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+      },
+      backgroundImage: {
+        'gradient-primary': "var(--gradient-primary)",
+        'gradient-accent': "var(--gradient-accent)",
+        'gradient-soft': "var(--gradient-soft)",
       },
     },
   },

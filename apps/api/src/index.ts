@@ -127,12 +127,17 @@ async function startServer() {
 
   // --- Setup Socket.IO Server ---
   const io = new SocketIOServer(httpServer, { // Use exported httpServer
-    cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:3000", // Allow client origin (frontend)
-      methods: ["GET", "POST"],
-      credentials: true
-    }
-  });
+      cors: {
+        origin:
+          process.env.NODE_ENV === "development"
+            ? ["http://localhost:3000", "http://localhost:5002"]
+            : process.env.CLIENT_URL
+              ? process.env.CLIENT_URL.split(",")
+              : "http://localhost:3000",
+        methods: ["GET", "POST"],
+        credentials: true
+      }
+    });
 
   // Socket.IO Authentication Middleware
   io.use((socket: AuthenticatedSocket, next) => {
@@ -411,7 +416,7 @@ async function startServer() {
   app.use('/graphql', graphqlLimiter);
   // Use the exported app instance
   app.use(cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000", // Allow client origin
+    origin: process.env.CLIENT_URL || "http://localhost:5002", // Allow client origin (updated port)
     credentials: true // Allow cookies/auth headers
   }));
   app.use(express.json());
@@ -444,7 +449,7 @@ async function startServer() {
 
   // --- Start Listening ---
   // Use the exported httpServer instance
-  const PORT = process.env.PORT || 4001;
+  const PORT = process.env.PORT || 4002; // Changed default port to 4002
   await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve));
   logger.info(`🚀 Server ready at http://localhost:${PORT}/graphql`);
 
@@ -462,10 +467,10 @@ export async function initializeApp() {
 }
 
 // Conditional start block removed to prevent auto-start on import
-// if (require.main === module) {
-//     startServer().catch((error) => {
-//         console.error('Failed to start server:', error);
-//         process.exit(1);
-//     });
-// }
+if (require.main === module) {
+    startServer().catch((error) => {
+        logger.error('Failed to start server:', error); // Use logger instead of console
+        process.exit(1);
+    });
+}
 // export { startServer };

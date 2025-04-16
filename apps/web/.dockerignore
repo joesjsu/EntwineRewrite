@@ -1,0 +1,33 @@
+# apps/web/.dockerignore
+
+# Ignore node_modules, as dependencies are installed inside the container
+node_modules
+
+# Ignore Git directory (though usually handled by root .dockerignore)
+.git
+
+# Ignore environment files
+.env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore Next.js build output directory
+.next
+
+# Ignore log files
+*.log
+
+# Ignore Docker related files within this app directory
+Dockerfile
+
+# Ignore VSCode settings
+.vscode
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore test artifacts
+coverage

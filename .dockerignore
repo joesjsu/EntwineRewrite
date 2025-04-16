@@ -1,0 +1,50 @@
+# .dockerignore (Root)
+
+# Git directory
+.git
+
+# Node modules (ignore all node_modules directories recursively)
+**/node_modules
+
+# Environment files - sensitive, should not be in image
+.env*
+
+# PNPM debug logs
+pnpm-debug.log*
+
+# Turbo cache/logs
+.turbo
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/Editor specific files
+.vscode
+.idea
+
+# Docker specific files at root
+docker-compose.yml
+Dockerfile # If there was a root Dockerfile
+
+# Build artifacts/caches
+dist
+.next
+# build # Keep this commented unless needed
+
+# Test artifacts
+coverage
+
+# Documentation / Markdown files (unless needed in image)
+*.md
+docs/
+
+# Migrations (unless needed in image)
+migrations/
+
+# Old app reference
+OLD APP - Not for coding - just for reference/
+
+# UI Screenshots
+UI Screenshots/

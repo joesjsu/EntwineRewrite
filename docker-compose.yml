@@ -1,0 +1,90 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - entwine-net
+
+  api:
+    build:
+      context: . # Build context is the monorepo root
+      dockerfile: apps/api/Dockerfile # Path to the Dockerfile relative to context
+    depends_on:
+      - redis
+    ports:
+      - "4001:4001"
+    volumes:
+      # Mount source code for hot-reloading
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      # Prevent host node_modules from overwriting container node_modules
+      - /app/apps/api/node_modules
+      # Prevent host node_modules in shared packages from overwriting container ones
+      # Note: This might need adjustment based on exact pnpm workspace behavior inside Docker
+      - /app/packages/shared/node_modules # Example for one package
+      - /app/packages/eslint-config/node_modules # Example for another
+      - /app/packages/typescript-config/node_modules # Example for another
+      # Mount the root node_modules as well if pnpm hoists deps there
+      - /app/node_modules
+    env_file:
+      - .env # Load variables from root .env file
+    environment:
+      # Override Redis URL to point to the service name
+      - REDIS_URL=redis://redis:6379
+      # Ensure the API listens on all interfaces within the container
+      - HOST=0.0.0.0
+      - PORT=4001
+    networks:
+      - entwine-net
+    # Add command override if needed, but Dockerfile CMD should handle dev start
+    # command: pnpm --filter @entwine-rewrite/api run dev
+
+  web:
+    build:
+      context: . # Build context is the monorepo root
+      dockerfile: apps/web/Dockerfile # Path to the Dockerfile relative to context
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot-reloading
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      # Prevent host node_modules from overwriting container node_modules
+      - /app/apps/web/node_modules
+      # Prevent host build artifacts (.next) from overwriting container ones
+      - /app/apps/web/.next
+      # Prevent host node_modules in shared packages from overwriting container ones
+      - /app/packages/shared/node_modules # Example for one package
+      - /app/packages/eslint-config/node_modules # Example for another
+      - /app/packages/typescript-config/node_modules # Example for another
+      # Mount the root node_modules as well if pnpm hoists deps there
+      - /app/node_modules
+    env_file:
+      - .env # Load variables from root .env file
+    environment:
+      # Override API URL to point to the api service name
+      # Verify NEXT_PUBLIC_API_URL is the correct variable name used in the web app
+      - NEXT_PUBLIC_API_URL=http://api:4001/graphql
+      # Ensure Next.js dev server listens on all interfaces
+      # The CMD in the Dockerfile should handle this, but setting it here is safer
+      - HOST=0.0.0.0
+      - PORT=3000
+    networks:
+      - entwine-net
+    # Add command override if needed, but Dockerfile CMD should handle dev start
+    # command: pnpm --filter web run dev
+
+volumes:
+  redis-data:
+
+networks:
+  entwine-net:
+    driver: bridge

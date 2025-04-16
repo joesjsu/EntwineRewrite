@@ -335,6 +335,41 @@ The application will guide new users through a multi-step registration process d
 
 
 ## 7. Development Process & Tooling
+### 7.1 Local Development Environment (Docker Compose) ✅ DONE
+
+Docker Compose is now used to manage the local development stack, including the API (`api`), web frontend (`web`), and Redis (`redis`) services. This simplifies setup and ensures consistency across development environments.
+
+**Key Configuration Files:**
+
+*   `docker-compose.yml` (Project Root)
+*   `apps/api/Dockerfile`
+*   `apps/web/Dockerfile`
+*   `.dockerignore` (Project Root)
+
+**Usage Instructions:**
+
+*   **Prerequisites:** Ensure Docker Desktop (or equivalent Docker engine) is installed and running.
+*   **Build & Start:** To build the images (if they don't exist or need updating) and start all services in detached mode (running in the background), use:
+    ```bash
+    docker-compose up --build -d
+    ```
+*   **Stop:** To stop and remove the containers, networks, and volumes created by `up`, use:
+    ```bash
+    docker-compose down
+    ```
+*   **View Logs:** To view the logs from all services and follow new output:
+    ```bash
+    docker-compose logs -f
+    ```
+    To view logs for a specific service (e.g., `web`):
+    ```bash
+    docker-compose logs -f web
+    ```
+*   **Access Points:**
+    *   Web Application: `http://localhost:3000`
+    *   API GraphQL Endpoint: `http://localhost:4001/graphql` (Useful for tools like Apollo Studio)
+
+
 
 *   **Testing:** ✅ DONE (Coaching & Matching Service Tests Expanded) - Installed Jest, `@types/jest`, `@jest/globals`, `ts-jest`, `cross-env`, `dedent`. Configured Jest for ESM/NodeNext (`apps/api/jest.config.js`, `apps/api/package.json` test script). Created unit tests for `GoogleProvider` (`google.provider.test.ts`) and `AIService` (`ai.service.test.ts`). Created comprehensive unit tests for `CoachingService` (`coaching.service.test.ts`), covering all methods including the new `getFeedbackForChat`. Fixed pre-existing failures and significantly expanded test coverage for `MatchingService` (`matching.service.test.ts`).
     *   **API Testing Infrastructure (`apps/api`):** ✅ DONE (Setup & Validation)

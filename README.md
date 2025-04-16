@@ -79,6 +79,52 @@ You can run both the API and web client simultaneously using Turborepo:
 pnpm run dev
 ```
 
+
+## Running with Docker Compose (Recommended for Web/API)
+
+This is the recommended method for running the core backend (API) and frontend (Web) services along with Redis for local development. It automates the setup and ensures services start in the correct order.
+
+### Prerequisites
+
+- **Docker Desktop**: Ensure Docker Desktop (or Docker Engine with Docker Compose) is installed and running on your system.
+
+### Setup
+
+1.  Ensure you have a `.env` file in the project root as described in the "Environment Setup" section. Docker Compose will automatically load this file.
+    *   **Important:** The `DATABASE_URL` should still point to your accessible PostgreSQL instance (e.g., Neon cloud DB or a local instance *not* managed by this Compose setup).
+    *   The `REDIS_URL` in your `.env` file will be overridden by Docker Compose to point to the Redis container, but it's good practice to have it defined.
+
+### Commands
+
+-   **Build and Start Services (in detached mode):**
+    ```bash
+    docker-compose up --build -d
+    ```
+    The `--build` flag ensures images are built if they don't exist or if Dockerfiles have changed. The `-d` flag runs containers in the background.
+
+-   **Stop Services:**
+    ```bash
+    docker-compose down
+    ```
+    This stops and removes the containers defined in the `docker-compose.yml` file. Add `-v` if you also want to remove the named volume (e.g., `redis-data`).
+
+-   **View Logs:**
+    ```bash
+    # View logs for all services
+    docker-compose logs -f
+
+    # View logs for a specific service (e.g., api)
+    docker-compose logs -f api
+    ```
+
+### Accessing Services
+
+-   **Web Application**: http://localhost:3000
+-   **API GraphQL Playground**: http://localhost:4001/graphql
+
+> **Note:** This Docker Compose setup manages the `api`, `web`, and `redis` services. You do not need to manually start these services using `pnpm run dev` if you are using Docker Compose.
+
+
 ## Accessing the Web Application
 
 Once the application is running, you can access the following routes:
